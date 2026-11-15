@@ -1,0 +1,23 @@
+name: swiggy_user_app
+description: Main consumer app for Swiggy Clone
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.4.9
+  http: ^1.2.0
+  shared_preferences: ^2.2.2
+  geolocator: ^10.1.0
+  url_launcher: ^6.3.0
+  swiggy_shared_core:
+    path: ../swiggy_shared_core
+
+flutter:
+  uses-material-design: true
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
