@@ -259,12 +259,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         await StorageService.setString('userAddress', fullAddr);
         await StorageService.setString('userLat', position.latitude.toString());
         await StorageService.setString('userLng', position.longitude.toString());
-
-        if (!silent) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location updated successfully!'), backgroundColor: Colors.green),
-          );
-        }
       }
     } catch (e) {
       if (!silent && mounted) {
