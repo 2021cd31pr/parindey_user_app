@@ -173,14 +173,24 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Edit Delivery Address', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+                        const Expanded(
+                          child: Text(
+                            'Edit Delivery Address',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         Row(
                           children: [
                             TextButton.icon(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                              ),
                               icon: _isDetectingLocation
                                   ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019)))
-                                  : const Icon(Icons.my_location, size: 16, color: Color(0xFFfc8019)),
-                              label: const Text('AUTO-GPS', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
+                                  : const Icon(Icons.my_location, size: 15, color: Color(0xFFfc8019)),
+                              label: const Text('AUTO-GPS', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 12)),
                               onPressed: _isDetectingLocation
                                   ? null
                                   : () async {
@@ -189,7 +199,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                       setBottomSheetState(() => _isDetectingLocation = false);
                                     },
                             ),
-                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                            IconButton(
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(Icons.close, size: 20),
+                              onPressed: () => Navigator.pop(context),
+                            ),
                           ],
                         ),
                       ],
