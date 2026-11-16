@@ -147,35 +147,36 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
         ? rest.imageUrl!
         : 'https://images.unsplash.com/photo-1552566626-52f8b828add9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
 
-    return SizedBox(
-      width: double.infinity,
-      child: Stack(
-        children: [
-          // Edge-to-Edge Background Image
-          Positioned.fill(
-            child: Image.network(
-              bgImage,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF282c3f)),
+    return ClipRect(
+      child: SizedBox(
+        width: double.infinity,
+        child: Stack(
+          children: [
+            // Edge-to-Edge Background Image
+            Positioned.fill(
+              child: Image.network(
+                bgImage,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(color: const Color(0xFF282c3f)),
+              ),
             ),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3), // Reduced subtle blur
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.35),
-                      Colors.black.withValues(alpha: 0.75),
-                    ],
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.35),
+                        Colors.black.withValues(alpha: 0.75),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
             // Restaurant Details Content Overlay
             Padding(
@@ -278,8 +279,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
