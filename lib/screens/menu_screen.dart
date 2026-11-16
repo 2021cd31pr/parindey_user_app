@@ -742,8 +742,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                       ),
                                       Positioned(
                                         bottom: -12,
-                                        left: 10,
-                                        right: 10,
+                                        left: 5,
+                                        right: 5,
                                         child: itemQty == 0
                                             ? ElevatedButton(
                                                 style: ElevatedButton.styleFrom(
@@ -768,21 +768,23 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                                 child: Row(
                                                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                                   children: [
-                                                    IconButton(
-                                                      padding: EdgeInsets.zero,
-                                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                                      icon: const Icon(Icons.remove, size: 18, color: Colors.green),
-                                                      onPressed: () => ref.read(cartProvider.notifier).decrementQuantity(dish.id),
+                                                    InkWell(
+                                                      onTap: () => ref.read(cartProvider.notifier).decrementQuantity(dish.id),
+                                                      child: const Padding(
+                                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                                        child: Icon(Icons.remove, size: 16, color: Colors.green),
+                                                      ),
                                                     ),
                                                     Text(
                                                       '$itemQty',
-                                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
+                                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.green),
                                                     ),
-                                                    IconButton(
-                                                      padding: EdgeInsets.zero,
-                                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                                      icon: const Icon(Icons.add, size: 18, color: Colors.green),
-                                                      onPressed: () => ref.read(cartProvider.notifier).incrementQuantity(dish.id),
+                                                    InkWell(
+                                                      onTap: () => ref.read(cartProvider.notifier).incrementQuantity(dish.id),
+                                                      child: const Padding(
+                                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                                        child: Icon(Icons.add, size: 16, color: Colors.green),
+                                                      ),
                                                     ),
                                                   ],
                                                 ),
