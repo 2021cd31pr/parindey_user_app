@@ -152,7 +152,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
         width: double.infinity,
         child: Stack(
           children: [
-            // Edge-to-Edge Background Image
+            // Background Image spanning top edge-to-edge under status bar
             Positioned.fill(
               child: Image.network(
                 bgImage,
@@ -169,8 +169,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.35),
-                        Colors.black.withValues(alpha: 0.75),
+                        Colors.black.withValues(alpha: 0.40),
+                        Colors.black.withValues(alpha: 0.80),
                       ],
                     ),
                   ),
@@ -178,9 +178,52 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               ),
             ),
 
+            // Floating Circular Action Buttons (Back & Share)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 14,
+              right: 14,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.black.withValues(alpha: 0.5),
+                    radius: 18,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                  CircleAvatar(
+                    backgroundColor: Colors.black.withValues(alpha: 0.5),
+                    radius: 18,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.share_outlined, color: Colors.white, size: 18),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Sharing link for $rName...'),
+                            backgroundColor: const Color(0xFFfc8019),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             // Restaurant Details Content Overlay
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 56,
+                bottom: 20.0,
+                left: 20.0,
+                right: 20.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -296,33 +339,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
       backgroundColor: Colors.grey[50],
       body: CustomScrollView(
         slivers: [
-          // Clean Top Bar without title text
-          SliverAppBar(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            pinned: true,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.share_outlined, color: Colors.black),
-                onPressed: () {
-                  final rName = restaurantDetailsAsync.value?.name ?? widget.restaurantName;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Sharing link for $rName...'),
-                      backgroundColor: const Color(0xFFfc8019),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-
-          // Restaurant Header with Blurred Image Background
+          // Restaurant Header with Immersive Top Banner & Floating Controls (0 White Bar)
           SliverToBoxAdapter(
             child: restaurantDetailsAsync.when(
               data: (rest) => _buildBlurredHeader(rest),
