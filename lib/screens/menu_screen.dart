@@ -143,40 +143,66 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
 
     final realDelivery = '$minTime-$maxTime mins | ${distanceKm.toStringAsFixed(1)} km';
 
-    final bgImage = (rest?.imageUrl != null && rest!.imageUrl!.isNotEmpty)
-        ? rest.imageUrl!
-        : 'https://images.unsplash.com/photo-1552566626-52f8b828add9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+    final String? bgImage = (rest?.imageUrl != null && rest!.imageUrl!.isNotEmpty)
+        ? rest.imageUrl
+        : null;
 
     return ClipRect(
       child: SizedBox(
         width: double.infinity,
         child: Stack(
           children: [
-            // Background Image spanning top edge-to-edge under status bar
+            // Background Image or Solid Dark Gradient (No Random Images)
             Positioned.fill(
-              child: Image.network(
-                bgImage,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: const Color(0xFF282c3f)),
-              ),
+              child: bgImage != null
+                  ? Image.network(
+                      bgImage,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(color: const Color(0xFF282c3f)),
+                    )
+                  : Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFF282c3f), Color(0xFF1c1e2d)],
+                        ),
+                      ),
+                    ),
             ),
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+            if (bgImage != null)
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.40),
+                          Colors.black.withValues(alpha: 0.80),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.40),
-                        Colors.black.withValues(alpha: 0.80),
+                        Colors.black.withValues(alpha: 0.30),
+                        Colors.black.withValues(alpha: 0.70),
                       ],
                     ),
                   ),
                 ),
               ),
-            ),
 
             // Floating Circular Action Buttons (Back & Share)
             Positioned(
@@ -334,6 +360,34 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final combosAsync = ref.watch(combosProvider(widget.restaurantId));
     final cartState = ref.watch(cartProvider);
     final activeOrder = ref.watch(activeOrderProvider);
+
+    // Full-Screen Loading Spinner until restaurant details are loaded
+    if (restaurantDetailsAsync.isLoading || dishesAsync.isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: Color(0xFFfc8019)),
+              const SizedBox(height: 16),
+              Text(
+                'Loading ${widget.restaurantName}...',
+                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
