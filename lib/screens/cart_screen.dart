@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 
 import '../models/order_model.dart';
 import '../models/restaurant_model.dart';
@@ -18,15 +20,15 @@ class CartScreen extends ConsumerStatefulWidget {
 }
 
 class _CartScreenState extends ConsumerState<CartScreen> {
-  final TextEditingController _nameController = TextEditingController(text: 'Aarav Sharma');
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
-  // Granular Address Controllers
-  final TextEditingController _houseNoController = TextEditingController(text: 'Flat No 789');
-  final TextEditingController _streetAreaController = TextEditingController(text: 'LIG Square, Ambedkar Nagar');
-  final TextEditingController _landmarkController = TextEditingController(text: 'Hanuman Mandir');
-  final TextEditingController _cityStateController = TextEditingController(text: 'Indore, Madhya Pradesh');
-  final TextEditingController _pincodeController = TextEditingController(text: '452010');
+  // Granular Address Controllers (Start empty — no fake hardcoded defaults)
+  final TextEditingController _houseNoController = TextEditingController();
+  final TextEditingController _streetAreaController = TextEditingController();
+  final TextEditingController _landmarkController = TextEditingController();
+  final TextEditingController _cityStateController = TextEditingController();
+  final TextEditingController _pincodeController = TextEditingController();
 
   bool _isPlacingOrder = false;
   bool _isDetectingLocation = false;
@@ -39,84 +41,241 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     _loadSavedUserData();
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _houseNoController.dispose();
+    _streetAreaController.dispose();
+    _landmarkController.dispose();
+    _cityStateController.dispose();
+    _pincodeController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadSavedUserData() async {
+    // 1. Load user auth profile info
     final authState = ref.read(authProvider);
     if (authState.name != null && authState.name!.isNotEmpty) {
       _nameController.text = authState.name!;
+    } else {
+      _nameController.text = 'User';
     }
+
     if (authState.phone != null && authState.phone!.isNotEmpty) {
       _phoneController.text = authState.phone!;
     } else {
       _phoneController.text = '9876543210';
     }
 
+    // 2. Read saved address and coordinates from StorageService
     final hNo = await StorageService.getString('userHouseNo');
     final stArea = await StorageService.getString('userStreetArea');
     final lm = await StorageService.getString('userLandmark');
     final cState = await StorageService.getString('userCityState');
     final pin = await StorageService.getString('userPincode');
-
     final savedLat = await StorageService.getString('userLat');
     final savedLng = await StorageService.getString('userLng');
+
     if (savedLat != null && savedLng != null) {
-      setState(() {
-        _latitude = double.tryParse(savedLat);
-        _longitude = double.tryParse(savedLng);
-      });
+      _latitude = double.tryParse(savedLat);
+      _longitude = double.tryParse(savedLng);
     }
 
-    if (hNo != null && hNo.isNotEmpty) _houseNoController.text = hNo;
-    if (stArea != null && stArea.isNotEmpty) _streetAreaController.text = stArea;
-    if (lm != null && lm.isNotEmpty) _landmarkController.text = lm;
-    if (cState != null && cState.isNotEmpty) _cityStateController.text = cState;
-    if (pin != null && pin.isNotEmpty) _pincodeController.text = pin;
+    // Clean out old fake dummy address if it was saved previously
+    final isDummyAddress = stArea == 'LIG Square, Ambedkar Nagar' || stArea == 'Vijay Nagar';
 
-    // Auto-fetch real GPS location & pre-fill address fields if not already loaded!
-    if (_latitude == null || _streetAreaController.text.isEmpty || _streetAreaController.text == 'Vijay Nagar') {
+    if (!isDummyAddress && stArea != null && stArea.isNotEmpty) {
+      if (hNo != null) _houseNoController.text = hNo;
+      _streetAreaController.text = stArea;
+      if (lm != null) _landmarkController.text = lm;
+      if (cState != null) _cityStateController.text = cState;
+      if (pin != null) _pincodeController.text = pin;
+      if (mounted) setState(() {});
+    }
+
+    // 3. If no real address exists or coordinates are missing, detect GPS immediately!
+    if (_latitude == null || _longitude == null || _streetAreaController.text.trim().isEmpty || isDummyAddress) {
       _autoDetectGpsLocation(silent: true);
     }
   }
 
-  Future<void> _autoDetectGpsLocation({bool silent = false}) async {
-    setState(() => _isDetectingLocation = true);
-    final position = await LocationService.getCurrentLocation(
-      onError: (msg) {
-        if (mounted && !silent) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  /// Ensures GPS permissions and services are active on the device
+  Future<Position?> _ensureGpsPosition({bool silent = false}) async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!silent && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Location services are disabled. Please turn on GPS.'),
+              action: SnackBarAction(
+                label: 'SETTINGS',
+                onPressed: () => Geolocator.openLocationSettings(),
+              ),
+            ),
+          );
         }
-      },
-    );
+        return null;
+      }
 
-    if (position != null && mounted) {
-      final addressDetails = await LocationService.reverseGeocode(position.latitude, position.longitude);
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (!silent && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permission was denied.')),
+            );
+          }
+          return null;
+        }
+      }
 
-      setState(() {
-        _latitude = position.latitude;
-        _longitude = position.longitude;
-        if (addressDetails.houseNo.isNotEmpty) _houseNoController.text = addressDetails.houseNo;
-        if (addressDetails.streetArea.isNotEmpty) _streetAreaController.text = addressDetails.streetArea;
-        if (addressDetails.landmark.isNotEmpty) _landmarkController.text = addressDetails.landmark;
-        if (addressDetails.cityState.isNotEmpty) _cityStateController.text = addressDetails.cityState;
-        if (addressDetails.pincode.isNotEmpty) _pincodeController.text = addressDetails.pincode;
-      });
+      if (permission == LocationPermission.deniedForever) {
+        if (!silent && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Location permissions are permanently denied.'),
+              action: SnackBarAction(
+                label: 'APP SETTINGS',
+                onPressed: () => Geolocator.openAppSettings(),
+              ),
+            ),
+          );
+        }
+        return null;
+      }
 
-      final fullAddr = _getFormattedFullAddress();
+      // Fetch precise GPS position with timeout
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+    } catch (e) {
+      // Fallback to last known position if active GPS timed out
+      try {
+        return await Geolocator.getLastKnownPosition();
+      } catch (_) {
+        return null;
+      }
+    }
+  }
 
-      // Save granular address & coordinates to StorageService
-      await StorageService.setString('userHouseNo', _houseNoController.text);
-      await StorageService.setString('userStreetArea', _streetAreaController.text);
-      await StorageService.setString('userLandmark', _landmarkController.text);
-      await StorageService.setString('userCityState', _cityStateController.text);
-      await StorageService.setString('userPincode', _pincodeController.text);
-      await StorageService.setString('userAddress', fullAddr);
-      await StorageService.setString('userLat', position.latitude.toString());
-      await StorageService.setString('userLng', position.longitude.toString());
+  /// Reverse geocode using LocationService with an OpenStreetMap fallback
+  Future<void> _autoDetectGpsLocation({bool silent = false}) async {
+    if (_isDetectingLocation) return;
+    setState(() => _isDetectingLocation = true);
 
-      setState(() => _isDetectingLocation = false);
+    try {
+      Position? position;
 
-      return;
-    } else {
-      setState(() => _isDetectingLocation = false);
+      // 1. Try custom LocationService first
+      try {
+        position = await LocationService.getCurrentLocation(
+          onError: (msg) {
+            if (!silent && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+            }
+          },
+        );
+      } catch (_) {}
+
+      // 2. Direct Geolocator fallback if LocationService didn't return
+      position ??= await _ensureGpsPosition(silent: silent);
+
+      if (position == null) {
+        if (!silent && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not obtain GPS location. Please check device GPS.')),
+          );
+        }
+        return;
+      }
+
+      _latitude = position.latitude;
+      _longitude = position.longitude;
+
+      String houseNo = '';
+      String streetArea = '';
+      String landmark = '';
+      String cityState = '';
+      String pincode = '';
+
+      // 3. Attempt reverse geocoding via LocationService
+      try {
+        final addressDetails = await LocationService.reverseGeocode(position.latitude, position.longitude);
+        if (addressDetails.houseNo.isNotEmpty) houseNo = addressDetails.houseNo;
+        if (addressDetails.streetArea.isNotEmpty) streetArea = addressDetails.streetArea;
+        if (addressDetails.landmark.isNotEmpty) landmark = addressDetails.landmark;
+        if (addressDetails.cityState.isNotEmpty) cityState = addressDetails.cityState;
+        if (addressDetails.pincode.isNotEmpty) pincode = addressDetails.pincode;
+      } catch (_) {}
+
+      // 4. Resilient Fallback: If streetArea or cityState is still blank, query reverse geocode API
+      if (streetArea.isEmpty || cityState.isEmpty) {
+        try {
+          final url = Uri.parse(
+            'https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&zoom=18&addressdetails=1',
+          );
+          final res = await http.get(url, headers: {'User-Agent': 'ParindeyFoodApp/1.0'}).timeout(const Duration(seconds: 5));
+          if (res.statusCode == 200) {
+            final data = jsonDecode(res.body);
+            final addr = data['address'] as Map<String, dynamic>?;
+            if (addr != null) {
+              houseNo = addr['house_number'] ?? addr['building'] ?? houseNo;
+              streetArea = [
+                addr['road'] ?? addr['suburb'] ?? addr['neighbourhood'] ?? addr['residential'],
+                addr['city_district'] ?? addr['subdistrict'],
+              ].where((e) => e != null && e.toString().trim().isNotEmpty).join(', ');
+
+              final city = addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['county'] ?? 'Indore';
+              final state = addr['state'] ?? 'Madhya Pradesh';
+              cityState = '$city, $state';
+              pincode = addr['postcode'] ?? pincode;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 5. Update UI controllers
+      if (mounted) {
+        setState(() {
+          if (houseNo.isNotEmpty) _houseNoController.text = houseNo;
+          if (streetArea.isNotEmpty) _streetAreaController.text = streetArea;
+          if (landmark.isNotEmpty) _landmarkController.text = landmark;
+          if (cityState.isNotEmpty) _cityStateController.text = cityState;
+          if (pincode.isNotEmpty) _pincodeController.text = pincode;
+        });
+
+        final fullAddr = _getFormattedFullAddress();
+
+        // 6. Persist to storage
+        await StorageService.setString('userHouseNo', _houseNoController.text.trim());
+        await StorageService.setString('userStreetArea', _streetAreaController.text.trim());
+        await StorageService.setString('userLandmark', _landmarkController.text.trim());
+        await StorageService.setString('userCityState', _cityStateController.text.trim());
+        await StorageService.setString('userPincode', _pincodeController.text.trim());
+        await StorageService.setString('userAddress', fullAddr);
+        await StorageService.setString('userLat', position.latitude.toString());
+        await StorageService.setString('userLng', position.longitude.toString());
+
+        if (!silent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location updated successfully!'), backgroundColor: Colors.green),
+          );
+        }
+      }
+    } catch (e) {
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to detect location: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDetectingLocation = false);
+      }
     }
   }
 
@@ -140,7 +299,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
     if (c.isNotEmpty) parts.add(c);
     if (p.isNotEmpty) parts.add('- $p');
-    return parts.isNotEmpty ? parts.join(', ') : 'Flat No 789, LIG Square, Ambedkar Nagar, Indore - 452010';
+
+    if (parts.isNotEmpty) return parts.join(', ');
+    return _isDetectingLocation ? 'Detecting current GPS location...' : 'Tap CHANGE to set delivery address';
   }
 
   void _showAddressEditBottomSheet() {
@@ -178,19 +339,22 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           children: [
                             TextButton.icon(
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                               ),
                               icon: _isDetectingLocation
                                   ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019)))
-                                  : const Icon(Icons.my_location, size: 15, color: Color(0xFFfc8019)),
-                              label: const Text('AUTO-GPS', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 12)),
+                                  : const Icon(Icons.my_location, size: 16, color: Color(0xFFfc8019)),
+                              label: Text(
+                                _isDetectingLocation ? 'LOCATING...' : 'AUTO-GPS',
+                                style: const TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
                               onPressed: _isDetectingLocation
                                   ? null
                                   : () async {
-                                      setBottomSheetState(() => _isDetectingLocation = true);
-                                      await _autoDetectGpsLocation();
-                                      setBottomSheetState(() => _isDetectingLocation = false);
-                                    },
+                                setBottomSheetState(() => _isDetectingLocation = true);
+                                await _autoDetectGpsLocation(silent: false);
+                                setBottomSheetState(() => _isDetectingLocation = false);
+                              },
                             ),
                             IconButton(
                               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -236,8 +400,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     TextField(
                       controller: _houseNoController,
                       decoration: InputDecoration(
-                        labelText: 'Flat / House / Building No. *',
-                        hintText: 'e.g. Flat No 789',
+                        labelText: 'Flat / House / Building No.',
+                        hintText: 'e.g. Flat 302, Tower B',
                         prefixIcon: const Icon(Icons.home_outlined, size: 20, color: Color(0xFFfc8019)),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         isDense: true,
@@ -248,7 +412,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       controller: _streetAreaController,
                       decoration: InputDecoration(
                         labelText: 'Street / Area / Colony *',
-                        hintText: 'e.g. LIG Square, Ambedkar Nagar',
+                        hintText: 'e.g. MG Road, Near City Mall',
                         prefixIcon: const Icon(Icons.add_road, size: 20, color: Color(0xFFfc8019)),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         isDense: true,
@@ -263,7 +427,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             controller: _landmarkController,
                             decoration: InputDecoration(
                               labelText: 'Landmark (Optional)',
-                              hintText: 'e.g. Hanuman Mandir',
+                              hintText: 'e.g. Opposite Bank',
                               prefixIcon: const Icon(Icons.explore_outlined, size: 20, color: Color(0xFFfc8019)),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               isDense: true,
@@ -293,6 +457,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       controller: _cityStateController,
                       decoration: InputDecoration(
                         labelText: 'City & State *',
+                        hintText: 'e.g. Indore, Madhya Pradesh',
                         prefixIcon: const Icon(Icons.location_city, size: 20, color: Color(0xFFfc8019)),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         isDense: true,
@@ -336,8 +501,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     if (_latitude == null || _longitude == null || rest == null) {
       return 2.5; // default fallback distance
     }
-    final shopLat = rest.latitude ?? 22.7196; // default Indore lat
-    final shopLng = rest.longitude ?? 75.8577; // default Indore lng
+    final shopLat = rest.latitude ?? 22.7196;
+    final shopLng = rest.longitude ?? 75.8577;
 
     final meters = Geolocator.distanceBetween(_latitude!, _longitude!, shopLat, shopLng);
     final km = meters / 1000.0;
@@ -375,7 +540,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Animated Pulsing Green Check Circle Icon
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -416,20 +580,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       },
     );
 
-    // Automatically navigate back to HomeScreen after 2.2 seconds
     Future.delayed(const Duration(milliseconds: 2200), () {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (route) => false,
+              (route) => false,
         );
       }
     });
   }
 
   Future<void> _placeOrder(double computedTotal) async {
-    FocusScope.of(context).unfocus(); // Dismiss keyboard
+    FocusScope.of(context).unfocus();
 
     final cartState = ref.read(cartProvider);
     if (cartState.items.isEmpty || cartState.restaurantId == null) {
@@ -445,18 +608,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     if (name.isEmpty || phone.isEmpty || _streetAreaController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill out name, phone and street address')),
+        const SnackBar(content: Text('Please fill out name, phone and delivery address')),
       );
       return;
     }
 
     // Ensure GPS coordinates are loaded or fetched before submitting order
     if (_latitude == null || _longitude == null) {
-      final pos = await LocationService.getCurrentLocation();
-      if (pos != null) {
-        _latitude = pos.latitude;
-        _longitude = pos.longitude;
-      }
+      await _autoDetectGpsLocation(silent: false);
     }
 
     final double finalLat = _latitude ?? 22.7196;
@@ -516,15 +675,15 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     final RestaurantModel? currentShop = cartState.restaurantId != null
         ? restaurants.firstWhere(
-            (r) => r.id == cartState.restaurantId,
-            orElse: () => RestaurantModel(
-              id: cartState.restaurantId!,
-              name: cartState.restaurantName ?? 'Restaurant',
-              address: 'Indore',
-              latitude: 22.7196,
-              longitude: 75.8577,
-            ),
-          )
+          (r) => r.id == cartState.restaurantId,
+      orElse: () => RestaurantModel(
+        id: cartState.restaurantId!,
+        name: cartState.restaurantName ?? 'Restaurant',
+        address: 'Indore',
+        latitude: 22.7196,
+        longitude: 75.8577,
+      ),
+    )
         : null;
 
     final distanceKm = _calculateDistanceInKm(currentShop);
@@ -600,7 +759,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
             ),
 
-            // Swiggy-style Delivery Address Summary Card
+            // Delivery Address Summary Card
             Container(
               color: Colors.white,
               padding: const EdgeInsets.all(16),
@@ -611,11 +770,15 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.home_filled, color: Color(0xFFfc8019), size: 22),
-                          SizedBox(width: 8),
-                          Text('Deliver to Home', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
+                          const Icon(Icons.location_on, color: Color(0xFFfc8019), size: 22),
+                          const SizedBox(width: 8),
+                          const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
+                          if (_isDetectingLocation) ...[
+                            const SizedBox(width: 8),
+                            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019))),
+                          ],
                         ],
                       ),
                       TextButton(
@@ -640,7 +803,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '${_nameController.text} • +91 ${_phoneController.text}',
+                            '${_nameController.text.isEmpty ? 'User' : _nameController.text} • +91 ${_phoneController.text.isEmpty ? '...' : _phoneController.text}',
                             style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                         ),
@@ -691,7 +854,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ],
                             ),
                           ),
-                          // Qty counter
                           Container(
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.grey[300]!),
@@ -725,7 +887,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
             ),
 
-            // Bill Details with Dynamic Distance & Delivery Fee Calculation
+            // Bill Details
             Container(
               color: Colors.white,
               padding: const EdgeInsets.all(16),
@@ -826,10 +988,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 onPressed: _isPlacingOrder ? null : () => _placeOrder(grandTotal),
                 child: _isPlacingOrder
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
                     : const Text('PROCEED TO PAY', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ],

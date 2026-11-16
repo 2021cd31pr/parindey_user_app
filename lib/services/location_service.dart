@@ -143,8 +143,8 @@ class LocationService {
         final streetAreaParts = [road, suburb].where((s) => s.isNotEmpty && s != houseNo).join(', ');
 
         return AddressDetails(
-          houseNo: houseNo.isNotEmpty ? houseNo : 'Flat 402, Sunshine Heights',
-          streetArea: streetAreaParts.isNotEmpty ? streetAreaParts : 'Vijay Nagar',
+          houseNo: houseNo.isNotEmpty ? houseNo : '',
+          streetArea: streetAreaParts.isNotEmpty ? streetAreaParts : 'Unnamed Road',
           landmark: landmark,
           cityState: '$city, $state',
           pincode: pincode,
