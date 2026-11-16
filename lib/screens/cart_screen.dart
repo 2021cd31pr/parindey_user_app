@@ -150,6 +150,180 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     return parts.isNotEmpty ? parts.join(', ') : 'Flat No 789, LIG Square, Ambedkar Nagar, Indore - 452010';
   }
 
+  void _showAddressEditBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setBottomSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                top: 20,
+                left: 20,
+                right: 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Edit Delivery Address', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+                        Row(
+                          children: [
+                            TextButton.icon(
+                              icon: _isDetectingLocation
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019)))
+                                  : const Icon(Icons.my_location, size: 16, color: Color(0xFFfc8019)),
+                              label: const Text('AUTO-GPS', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
+                              onPressed: _isDetectingLocation
+                                  ? null
+                                  : () async {
+                                      setBottomSheetState(() => _isDetectingLocation = true);
+                                      await _autoDetectGpsLocation();
+                                      setBottomSheetState(() => _isDetectingLocation = false);
+                                    },
+                            ),
+                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              labelText: 'Customer Name *',
+                              prefixIcon: const Icon(Icons.person_outline, size: 20, color: Color(0xFFfc8019)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: InputDecoration(
+                              labelText: 'Phone *',
+                              prefixIcon: const Icon(Icons.phone_android, size: 20, color: Color(0xFFfc8019)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _houseNoController,
+                      decoration: InputDecoration(
+                        labelText: 'Flat / House / Building No. *',
+                        hintText: 'e.g. Flat No 789',
+                        prefixIcon: const Icon(Icons.home_outlined, size: 20, color: Color(0xFFfc8019)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _streetAreaController,
+                      decoration: InputDecoration(
+                        labelText: 'Street / Area / Colony *',
+                        hintText: 'e.g. LIG Square, Ambedkar Nagar',
+                        prefixIcon: const Icon(Icons.add_road, size: 20, color: Color(0xFFfc8019)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: _landmarkController,
+                            decoration: InputDecoration(
+                              labelText: 'Landmark (Optional)',
+                              hintText: 'e.g. Hanuman Mandir',
+                              prefixIcon: const Icon(Icons.explore_outlined, size: 20, color: Color(0xFFfc8019)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 1,
+                          child: TextField(
+                            controller: _pincodeController,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            decoration: InputDecoration(
+                              labelText: 'Pincode *',
+                              counterText: '',
+                              prefixIcon: const Icon(Icons.pin_drop_outlined, size: 20, color: Color(0xFFfc8019)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _cityStateController,
+                      decoration: InputDecoration(
+                        labelText: 'City & State *',
+                        prefixIcon: const Icon(Icons.location_city, size: 20, color: Color(0xFFfc8019)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFfc8019),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          final fullAddr = _getFormattedFullAddress();
+                          await StorageService.setString('userHouseNo', _houseNoController.text.trim());
+                          await StorageService.setString('userStreetArea', _streetAreaController.text.trim());
+                          await StorageService.setString('userLandmark', _landmarkController.text.trim());
+                          await StorageService.setString('userCityState', _cityStateController.text.trim());
+                          await StorageService.setString('userPincode', _pincodeController.text.trim());
+                          await StorageService.setString('userAddress', fullAddr);
+
+                          if (mounted) setState(() {});
+                          if (context.mounted) Navigator.pop(context);
+                        },
+                        child: const Text('SAVE & DELIVER HERE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   double _calculateDistanceInKm(RestaurantModel? rest) {
     if (_latitude == null || _longitude == null || rest == null) {
       return 2.5; // default fallback distance
@@ -406,7 +580,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
             ),
 
-            // Delivery Address Header & Granular Fields
+            // Swiggy-style Delivery Address Summary Card
             Container(
               color: Colors.white,
               padding: const EdgeInsets.all(16),
@@ -419,113 +593,39 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.location_on, color: Color(0xFFfc8019), size: 24),
+                          Icon(Icons.home_filled, color: Color(0xFFfc8019), size: 22),
                           SizedBox(width: 8),
-                          Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text('Deliver to Home', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
                         ],
                       ),
-                      TextButton.icon(
-                        icon: _isDetectingLocation
-                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019)))
-                            : const Icon(Icons.my_location, size: 16, color: Color(0xFFfc8019)),
-                        label: const Text('AUTO-GPS', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
-                        onPressed: _isDetectingLocation ? null : _autoDetectGpsLocation,
+                      TextButton(
+                        onPressed: () => _showAddressEditBottomSheet(),
+                        child: const Text('CHANGE', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _getFormattedFullAddress(),
+                    style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _nameController,
-                          decoration: InputDecoration(
-                            labelText: 'Customer Name *',
-                            prefixIcon: const Icon(Icons.person_outline, size: 20, color: Color(0xFFfc8019)),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            isDense: true,
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () => _showAddressEditBottomSheet(),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${_nameController.text} • +91 ${_phoneController.text}',
+                            style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          decoration: InputDecoration(
-                            labelText: 'Phone *',
-                            prefixIcon: const Icon(Icons.phone_android, size: 20, color: Color(0xFFfc8019)),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _houseNoController,
-                    decoration: InputDecoration(
-                      labelText: 'Flat / House / Building No. *',
-                      hintText: 'e.g. Flat No 789',
-                      prefixIcon: const Icon(Icons.home_outlined, size: 20, color: Color(0xFFfc8019)),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      isDense: true,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _streetAreaController,
-                    decoration: InputDecoration(
-                      labelText: 'Street / Area / Colony *',
-                      hintText: 'e.g. LIG Square, Ambedkar Nagar',
-                      prefixIcon: const Icon(Icons.add_road, size: 20, color: Color(0xFFfc8019)),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      isDense: true,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: TextField(
-                          controller: _landmarkController,
-                          decoration: InputDecoration(
-                            labelText: 'Landmark (Optional)',
-                            hintText: 'e.g. Hanuman Mandir',
-                            prefixIcon: const Icon(Icons.explore_outlined, size: 20, color: Color(0xFFfc8019)),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        flex: 1,
-                        child: TextField(
-                          controller: _pincodeController,
-                          keyboardType: TextInputType.number,
-                          maxLength: 6,
-                          decoration: InputDecoration(
-                            labelText: 'Pincode *',
-                            counterText: '',
-                            prefixIcon: const Icon(Icons.pin_drop_outlined, size: 20, color: Color(0xFFfc8019)),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _cityStateController,
-                    decoration: InputDecoration(
-                      labelText: 'City & State *',
-                      prefixIcon: const Icon(Icons.location_city, size: 20, color: Color(0xFFfc8019)),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      isDense: true,
+                        const Icon(Icons.edit_outlined, size: 16, color: Color(0xFFfc8019)),
+                      ],
                     ),
                   ),
                 ],
