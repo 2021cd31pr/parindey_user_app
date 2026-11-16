@@ -457,6 +457,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       return;
     }
 
+    // Ensure GPS coordinates are loaded or fetched before submitting order
+    if (_latitude == null || _longitude == null) {
+      final pos = await LocationService.getCurrentLocation();
+      if (pos != null) {
+        _latitude = pos.latitude;
+        _longitude = pos.longitude;
+      }
+    }
+
+    final double finalLat = _latitude ?? 22.7196;
+    final double finalLng = _longitude ?? 75.8577;
+
     setState(() => _isPlacingOrder = true);
 
     try {
@@ -465,8 +477,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         customerName: name,
         customerPhone: phone,
         deliveryAddress: fullAddress,
-        latitude: _latitude,
-        longitude: _longitude,
+        latitude: finalLat,
+        longitude: finalLng,
         paymentMethod: 'ONLINE',
         totalAmount: computedTotal,
         items: cartState.items.values.toList(),

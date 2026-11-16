@@ -24,29 +24,23 @@ class OrderRequest {
   });
 
   Map<String, dynamic> toJson() {
-    final map = <String, dynamic>{
+    final double lat = latitude ?? 22.7196;
+    final double lng = longitude ?? 75.8577;
+
+    return {
       'restaurantId': restaurantId,
       'customerName': customerName,
       'customerPhone': customerPhone,
       'deliveryAddress': deliveryAddress,
+      'deliveryLatitude': lat,
+      'deliveryLongitude': lng,
+      'latitude': lat,
+      'longitude': lng,
+      'deliveryLocation': {'lat': lat, 'lng': lng},
       'paymentMethod': paymentMethod,
       'totalAmount': totalAmount,
       'items': items.map((item) => item.toOrderItemJson()).toList(),
     };
-
-    if (latitude != null) {
-      map['deliveryLatitude'] = latitude;
-      map['latitude'] = latitude;
-    }
-    if (longitude != null) {
-      map['deliveryLongitude'] = longitude;
-      map['longitude'] = longitude;
-    }
-    if (latitude != null && longitude != null) {
-      map['deliveryLocation'] = {'lat': latitude, 'lng': longitude};
-    }
-
-    return map;
   }
 }
 
