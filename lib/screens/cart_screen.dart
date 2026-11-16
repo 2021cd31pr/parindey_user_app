@@ -114,14 +114,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
       setState(() => _isDetectingLocation = false);
 
-      if (mounted && !silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Auto-detected real-time GPS location address!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      return;
     } else {
       setState(() => _isDetectingLocation = false);
     }
