@@ -83,7 +83,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
 
     // Clean out old fake dummy address if it was saved previously
-    final isDummyAddress = stArea == 'LIG Square, Ambedkar Nagar' || stArea == 'Vijay Nagar';
+    final isDummyAddress = stArea == 'LIG Square, Ambedkar Nagar' || stArea == 'Vijay Nagar' || stArea == 'Unnamed Road';
 
     if (!isDummyAddress && stArea != null && stArea.isNotEmpty) {
       if (hNo != null) _houseNoController.text = hNo;
