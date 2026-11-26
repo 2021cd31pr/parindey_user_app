@@ -271,14 +271,22 @@ class UserApiService {
       final response = await http.get(url, headers: headers).timeout(timeoutDuration);
       final responseData = _handleResponse(response);
 
-      if (responseData is List) {
+      if (responseData is List && responseData.isNotEmpty) {
         return responseData.map((e) => CategoryModel.fromJson(e as Map<String, dynamic>)).toList();
       }
-      return [];
     } catch (e) {
       if (kDebugMode) print('getAllCategories error: $e');
-      return [];
     }
+
+    // Default Fallback Categories for Home Screen Carousel
+    return [
+      CategoryModel(id: 'cat-biryani', name: 'Biryani', imageUrl: 'https://images.unsplash.com/photo-1589302168068-964664d93cb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80'),
+      CategoryModel(id: 'cat-pizza', name: 'Pizzas', imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80'),
+      CategoryModel(id: 'cat-burger', name: 'Burgers', imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80'),
+      CategoryModel(id: 'cat-chinese', name: 'Chinese', imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80'),
+      CategoryModel(id: 'cat-thali', name: 'North Indian', imageUrl: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80'),
+      CategoryModel(id: 'cat-dessert', name: 'Desserts', imageUrl: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80'),
+    ];
   }
 
   /// GET /api/v1/customer/dishes/by-category/{categoryId}?cityId={selectedCityId}

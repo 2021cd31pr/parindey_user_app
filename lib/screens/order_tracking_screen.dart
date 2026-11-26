@@ -297,10 +297,10 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
 
             // Live Stepper Progress Card
             Container(
-              color: Colors.white,
               padding: const EdgeInsets.all(20),
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
               ),
