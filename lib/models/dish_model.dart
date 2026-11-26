@@ -38,7 +38,7 @@ class DishModel {
     final str = url.toString().trim();
     if (str.isEmpty || str == 'null' || str == 'undefined') return null;
     if (str.startsWith('/')) {
-      return 'https://parindey-production.up.railway.app$str';
+      return 'https://parindey-92zk.onrender.com$str';
     }
     return str;
   }
