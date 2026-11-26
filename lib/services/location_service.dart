@@ -9,6 +9,7 @@ class AddressDetails {
   final String streetArea;
   final String landmark;
   final String cityState;
+  final String city; // Added isolated city name for DB matching
   final String pincode;
   final double? latitude;
   final double? longitude;
@@ -18,6 +19,7 @@ class AddressDetails {
     required this.streetArea,
     required this.landmark,
     required this.cityState,
+    required this.city,
     required this.pincode,
     this.latitude,
     this.longitude,
@@ -206,6 +208,7 @@ class LocationService {
             streetArea: streetAreaParts,
             landmark: landmark,
             cityState: cityStateParts,
+            city: city.isNotEmpty ? city : 'Indore',
             pincode: pincode,
             latitude: lat,
             longitude: lng,
@@ -237,6 +240,7 @@ class LocationService {
           streetArea: locality,
           landmark: '',
           cityState: cityStateParts,
+          city: city.isNotEmpty ? city : 'Indore',
           pincode: pincode,
           latitude: lat,
           longitude: lng,
@@ -252,6 +256,7 @@ class LocationService {
       streetArea: 'Lat: ${lat.toStringAsFixed(6)}, Lng: ${lng.toStringAsFixed(6)}',
       landmark: '',
       cityState: '',
+      city: 'Indore',
       pincode: '',
       latitude: lat,
       longitude: lng,

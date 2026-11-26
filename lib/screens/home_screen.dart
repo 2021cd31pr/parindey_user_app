@@ -62,6 +62,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     };
   }
 
+  bool _isInitializing = true;
+  bool _isServiceAvailable = true;
+  String _detectedCity = 'Indore';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initLocationAndCity();
+    });
+  }
+
+  Future<void> _initLocationAndCity() async {
+    setState(() => _isInitializing = true);
+    final pos = await LocationService.getCurrentLocation(
+      onError: (msg) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        }
+      },
+    );
+
+    if (pos == null) {
+      if (mounted) setState(() => _isInitializing = false);
+      return;
+    }
+
+    _userGpsPos = pos;
+    final address = await LocationService.reverseGeocode(pos.latitude, pos.longitude);
+    final userCity = address.city.isNotEmpty ? address.city : 'Indore';
+    _detectedCity = userCity;
+
+    try {
+      final api = ref.read(userApiServiceProvider);
+      final dbCities = await api.getCities();
+
+      final match = dbCities.where((c) => c.name.toLowerCase() == userCity.toLowerCase()).firstOrNull;
+
+      if (mounted) {
+        if (match != null) {
+          ref.read(selectedCityProvider.notifier).selectCity(match);
+          setState(() {
+            _isServiceAvailable = true;
+            _isInitializing = false;
+          });
+          // Optionally fetch nearby restaurants right away
+          final nearby = await api.getNearbyRestaurants(latitude: pos.latitude, longitude: pos.longitude, radiusInKm: 15.0);
+          setState(() => gpsNearbyRestaurants = nearby);
+        } else {
+          setState(() {
+            _isServiceAvailable = false;
+            _isInitializing = false;
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isInitializing = false);
+    }
+  }
+
   Future<void> _detectLocationAndFetchNearby() async {
     setState(() => isGpsLoading = true);
     final position = await LocationService.getCurrentLocation(
@@ -216,16 +276,84 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final activeOrder = ref.watch(activeOrderProvider);
     final searchDishesAsync = searchQuery.isNotEmpty ? ref.watch(searchDishesProvider(searchQuery)) : null;
 
-    // Auto-select initial city if none selected
-    citiesAsync.whenData((cities) {
-      if (selectedCity == null && cities.isNotEmpty) {
-        Future.microtask(() {
-          ref.read(selectedCityProvider.notifier).selectCity(cities.first);
-        });
-      }
-    });
-
     final currentCityName = selectedCity?.name ?? 'Indore';
+
+    if (_isInitializing) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: Color(0xFFfc8019)),
+              const SizedBox(height: 16),
+              const Text('Locating your city...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_isServiceAvailable) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: Text(
+            'Location: $_detectedCity',
+            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                citiesAsync.whenData((cities) {
+                  _showCitySelectionDialog(cities, selectedCity);
+                });
+              },
+              child: const Text('CHANGE', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.location_off, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 24),
+                Text(
+                  'We are not in $_detectedCity yet!',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black87),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'We are expanding rapidly and will be flying to your city very soon. Thank you for your patience!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.4),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFfc8019),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  onPressed: () {
+                    citiesAsync.whenData((cities) {
+                      _showCitySelectionDialog(cities, selectedCity);
+                    });
+                  },
+                  child: const Text('SELECT ANOTHER CITY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
