@@ -5,6 +5,7 @@ import '../models/dish_model.dart';
 import '../providers/app_providers.dart';
 import '../widgets/floating_active_order_card.dart';
 import '../widgets/dish_details_bottom_sheet.dart';
+import '../widgets/shimmer_loading.dart';
 import 'cart_screen.dart';
 
 class CategoryDishesScreen extends ConsumerStatefulWidget {
@@ -352,8 +353,10 @@ class _CategoryDishesScreenState extends ConsumerState<CategoryDishesScreen> {
           },
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFFfc8019)),
+        loading: () => ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: 4,
+          itemBuilder: (_, __) => const DishCardShimmer(),
         ),
         error: (err, stack) => Center(
           child: Padding(

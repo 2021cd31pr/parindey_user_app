@@ -12,6 +12,7 @@ import 'profile_screen.dart';
 import 'category_dishes_screen.dart';
 import '../widgets/floating_active_order_card.dart';
 import '../widgets/dish_details_bottom_sheet.dart';
+import '../widgets/shimmer_loading.dart';
 import '../services/location_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -65,13 +66,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isInitializing = true;
   bool _isServiceAvailable = true;
   String _detectedCity = 'Indore';
+  final ScrollController _scrollController = ScrollController();
+  int _visibleRestaurantCount = 10;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initLocationAndCity();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+      setState(() {
+        _visibleRestaurantCount += 10;
+      });
+    }
   }
 
   Future<void> _initLocationAndCity() async {
@@ -247,6 +266,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ref.read(selectedCityProvider.notifier).selectCity(city);
                         setState(() {
                           gpsNearbyRestaurants = null;
+                          _isServiceAvailable = true; // FORCE AVAILABLE FOR MANUALLY SELECTED CITY!
                         });
                         Navigator.pop(context);
                       },
@@ -387,6 +407,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             // App Bar / Location Header
             SliverToBoxAdapter(
@@ -610,10 +631,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                           );
                         },
-                        loading: () => const SizedBox(
-                          height: 110,
-                          child: Center(child: CircularProgressIndicator(color: Color(0xFFfc8019))),
-                        ),
+                        loading: () => const CategoryCarouselShimmer(),
                         error: (_, __) => const SizedBox.shrink(),
                       ),
                     ],
@@ -762,11 +780,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   return _buildRestaurantSliverList(filtered);
                 },
-                loading: () => const SliverToBoxAdapter(
-                  child: Center(child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: CircularProgressIndicator(color: Color(0xFFfc8019)),
-                  )),
+                loading: () => SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, __) => const RestaurantCardShimmer(),
+                    childCount: 3,
+                  ),
                 ),
                 error: (e, st) => SliverToBoxAdapter(
                   child: Center(child: Padding(
@@ -846,10 +864,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildRestaurantSliverList(List<RestaurantModel> restaurants) {
+    final paginated = restaurants.take(_visibleRestaurantCount).toList();
+
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          final restaurant = restaurants[index];
+          final restaurant = paginated[index];
           final dbImageUrl = restaurant.imageUrl;
 
           return InkWell(
@@ -1029,7 +1049,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           );
         },
-        childCount: restaurants.length,
+        childCount: paginated.length,
       ),
     );
   }
