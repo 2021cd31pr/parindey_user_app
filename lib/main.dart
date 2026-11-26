@@ -17,7 +17,7 @@ class ParindeyUserApp extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     return MaterialApp(
-      title: 'Parindey Food Delivery',
+      title: 'Parindey Foods',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.deepOrange,

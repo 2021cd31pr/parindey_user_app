@@ -107,9 +107,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _isServiceAvailable = true;
             _isInitializing = false;
           });
-          // Optionally fetch nearby restaurants right away
-          final nearby = await api.getNearbyRestaurants(latitude: pos.latitude, longitude: pos.longitude, radiusInKm: 15.0);
-          setState(() => gpsNearbyRestaurants = nearby);
+          // If the city is Indore, do not force the nearby GPS filter.
+          // Otherwise, fetch and show nearby restaurants
+          if (userCity.toLowerCase() != 'indore') {
+            final nearby = await api.getNearbyRestaurants(latitude: pos.latitude, longitude: pos.longitude, radiusInKm: 15.0);
+            setState(() => gpsNearbyRestaurants = nearby);
+          } else {
+             // For Indore, we want to show all restaurants by default
+            setState(() => gpsNearbyRestaurants = null);
+          }
         } else {
           setState(() {
             _isServiceAvailable = false;
@@ -140,26 +146,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     try {
+      final address = await LocationService.reverseGeocode(position.latitude, position.longitude);
+      final userCity = address.city.isNotEmpty ? address.city : 'Indore';
+
       final api = ref.read(userApiServiceProvider);
-      final nearby = await api.getNearbyRestaurants(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        radiusInKm: 15.0,
-      );
 
-      setState(() {
-        _userGpsPos = position;
-        gpsNearbyRestaurants = nearby;
-        isGpsLoading = false;
-      });
+      if (userCity.toLowerCase() == 'indore') {
+        // If Indore, do not restrict to nearby radius, show all
+        setState(() {
+          _userGpsPos = position;
+          gpsNearbyRestaurants = null;
+          isGpsLoading = false;
+        });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Found ${nearby.length} nearby restaurants via GPS'),
-            backgroundColor: Colors.green,
-          ),
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Auto-detected Indore. Showing all city restaurants!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        final nearby = await api.getNearbyRestaurants(
+          latitude: position.latitude,
+          longitude: position.longitude,
+          radiusInKm: 15.0,
         );
+
+        setState(() {
+          _userGpsPos = position;
+          gpsNearbyRestaurants = nearby;
+          isGpsLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Found ${nearby.length} nearby restaurants via GPS'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() => isGpsLoading = false);
