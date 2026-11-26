@@ -49,6 +49,7 @@ class OrderResponse {
   final String restaurantId;
   final String? restaurantName;
   final String? restaurantAddress;
+  final String? restaurantPhone;
   final double? restaurantLatitude;
   final double? restaurantLongitude;
   final String status;
@@ -64,16 +65,26 @@ class OrderResponse {
   final String? deliveryPartnerId;
   final String? deliveryPartnerName;
   final String? deliveryPartnerPhone;
-  final String? assignedDeliveryAt;
-  final String? deliveredAt;
-  final String? createdAt;
+  final DateTime? assignedDeliveryAt;
+  final DateTime? deliveredAt;
+  final DateTime? createdAt;
   final List<dynamic>? items;
+
+  // ⏱️ NEW TIMER & STATUS TRACKING FIELDS
+  final int prepTimeMinutes;          
+  final DateTime? prepEndsAt;         
+  final int prepExtendedCount;        
+  final DateTime? acceptedAt;         
+  final DateTime? pickupArrivedAt;    
+  final DateTime? pickedUpAt;         
+  final int remainingPrepSeconds;     
 
   OrderResponse({
     required this.id,
     required this.restaurantId,
     this.restaurantName,
     this.restaurantAddress,
+    this.restaurantPhone,
     this.restaurantLatitude,
     this.restaurantLongitude,
     required this.status,
@@ -93,6 +104,13 @@ class OrderResponse {
     this.deliveredAt,
     this.createdAt,
     this.items,
+    this.prepTimeMinutes = 10,
+    this.prepEndsAt,
+    this.prepExtendedCount = 0,
+    this.acceptedAt,
+    this.pickupArrivedAt,
+    this.pickedUpAt,
+    this.remainingPrepSeconds = 0,
   });
 
   factory OrderResponse.fromJson(Map<String, dynamic> json) {
@@ -101,6 +119,7 @@ class OrderResponse {
       restaurantId: json['restaurantId']?.toString() ?? '',
       restaurantName: json['restaurantName']?.toString() ?? json['restaurant']?['name']?.toString(),
       restaurantAddress: json['restaurantAddress']?.toString() ?? json['restaurant']?['address']?.toString(),
+      restaurantPhone: json['restaurantPhone']?.toString(),
       restaurantLatitude: (json['restaurantLatitude'] as num?)?.toDouble(),
       restaurantLongitude: (json['restaurantLongitude'] as num?)?.toDouble(),
       status: json['status']?.toString() ?? 'PLACED',
@@ -116,10 +135,17 @@ class OrderResponse {
       deliveryPartnerId: json['deliveryPartnerId']?.toString(),
       deliveryPartnerName: json['deliveryPartnerName']?.toString() ?? json['deliveryBoyName']?.toString(),
       deliveryPartnerPhone: json['deliveryPartnerPhone']?.toString() ?? json['deliveryBoyPhone']?.toString(),
-      assignedDeliveryAt: json['assignedDeliveryAt']?.toString(),
-      deliveredAt: json['deliveredAt']?.toString(),
-      createdAt: json['createdAt']?.toString(),
+      assignedDeliveryAt: json['assignedDeliveryAt'] != null ? DateTime.tryParse(json['assignedDeliveryAt']) : null,
+      deliveredAt: json['deliveredAt'] != null ? DateTime.tryParse(json['deliveredAt']) : null,
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
       items: json['items'] as List<dynamic>?,
+      prepTimeMinutes: (json['prepTimeMinutes'] as num?)?.toInt() ?? 10,
+      prepEndsAt: json['prepEndsAt'] != null ? DateTime.tryParse(json['prepEndsAt']) : null,
+      prepExtendedCount: (json['prepExtendedCount'] as num?)?.toInt() ?? 0,
+      acceptedAt: json['acceptedAt'] != null ? DateTime.tryParse(json['acceptedAt']) : null,
+      pickupArrivedAt: json['pickupArrivedAt'] != null ? DateTime.tryParse(json['pickupArrivedAt']) : null,
+      pickedUpAt: json['pickedUpAt'] != null ? DateTime.tryParse(json['pickedUpAt']) : null,
+      remainingPrepSeconds: (json['remainingPrepSeconds'] as num?)?.toInt() ?? 0,
     );
   }
 }

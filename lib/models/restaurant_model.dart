@@ -38,7 +38,7 @@ class RestaurantModel {
     final str = url.toString().trim();
     if (str.isEmpty || str == 'null' || str == 'undefined') return null;
     if (str.startsWith('/')) {
-      return 'https://parindey-92zk.onrender.com$str';
+      return 'https://parindey-production.up.railway.app$str';
     }
     return str;
   }
