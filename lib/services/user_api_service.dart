@@ -24,7 +24,7 @@ class UserApiException implements Exception {
 }
 
 class UserApiService {
-  static const String baseUrl = 'https://parindey-92zk.onrender.com';
+  static const String baseUrl = 'https://parindey-production.up.railway.app';
   static const Duration timeoutDuration = Duration(seconds: 45);
 
   Future<Map<String, String>> _getHeaders({bool requireAuth = false}) async {
