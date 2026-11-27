@@ -16,11 +16,11 @@ class ProfileScreen extends ConsumerWidget {
     final nameController = TextEditingController(text: authState.name ?? 'Parindey Customer');
     final phoneController = TextEditingController(text: authState.phone ?? '9876543210');
 
-    final hNo = await StorageService.getString('userHouseNo') ?? 'Flat No 789';
-    final stArea = await StorageService.getString('userStreetArea') ?? 'LIG Square, Ambedkar Nagar';
-    final lm = await StorageService.getString('userLandmark') ?? 'Hanuman Mandir';
-    final cState = await StorageService.getString('userCityState') ?? 'Indore, Madhya Pradesh';
-    final pin = await StorageService.getString('userPincode') ?? '452010';
+    final hNo = await StorageService.getString('userHouseNo') ?? '';
+    final stArea = await StorageService.getString('userStreetArea') ?? '';
+    final lm = await StorageService.getString('userLandmark') ?? '';
+    final cState = await StorageService.getString('userCityState') ?? '';
+    final pin = await StorageService.getString('userPincode') ?? '';
 
     final houseNoController = TextEditingController(text: hNo);
     final streetAreaController = TextEditingController(text: stArea);
@@ -213,7 +213,7 @@ class ProfileScreen extends ConsumerWidget {
                           if (c.isNotEmpty) parts.add(c);
                           if (p.isNotEmpty) parts.add('- $p');
 
-                          final fullAddr = parts.isNotEmpty ? parts.join(', ') : 'Flat 402, Vijay Nagar, Indore - 452010';
+                          final fullAddr = parts.isNotEmpty ? parts.join(', ') : '';
 
                           await StorageService.setString('userHouseNo', h);
                           await StorageService.setString('userStreetArea', s);
@@ -318,7 +318,7 @@ class ProfileScreen extends ConsumerWidget {
 
     String displayAddress = (authState.address != null && authState.address!.isNotEmpty)
         ? authState.address!
-        : 'Flat 402, Sunshine Heights, Vijay Nagar, Indore - 452010';
+        : 'Tap EDIT to add your delivery address';
     displayAddress = displayAddress.replaceAll(RegExp(r'\s*\(Lat:.*, Lng:.*\)', caseSensitive: false), '');
 
     return Scaffold(

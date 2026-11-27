@@ -50,7 +50,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       });
     }
 
-    // 2. Fetch fresh high-precision GPS position & address in background
+    // 2. Fetch fresh high-precision GPS position & address in background during splash screen
     try {
       final pos = await LocationService.getCurrentLocation();
       if (pos != null) {
@@ -62,11 +62,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
             _locationStatusText = fullAddr;
           });
         }
+
+        // Save granular address & coordinates to StorageService
+        await StorageService.setString('userHouseNo', addressDetails.houseNo);
+        await StorageService.setString('userStreetArea', addressDetails.streetArea);
+        await StorageService.setString('userLandmark', addressDetails.landmark);
+        await StorageService.setString('userCityState', addressDetails.cityState);
+        await StorageService.setString('userPincode', addressDetails.pincode);
+        await StorageService.setString('userAddress', fullAddr);
+        await StorageService.setString('userLat', pos.latitude.toString());
+        await StorageService.setString('userLng', pos.longitude.toString());
+
+        // Pre-match city with DB
+        final userCity = addressDetails.city.isNotEmpty ? addressDetails.city : 'Indore';
+        final api = ref.read(userApiServiceProvider);
+        final dbCities = await api.getCities();
+        final match = dbCities.where((c) => c.name.toLowerCase() == userCity.toLowerCase()).firstOrNull;
+        if (match != null) {
+          ref.read(selectedCityProvider.notifier).selectCity(match);
+        }
       }
     } catch (_) {}
 
     // 3. Smooth transition delay
-    await Future.delayed(const Duration(milliseconds: 1800));
+    await Future.delayed(const Duration(milliseconds: 1600));
 
     if (!mounted) return;
     final authState = ref.read(authProvider);

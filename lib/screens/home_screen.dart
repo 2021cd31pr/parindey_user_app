@@ -94,6 +94,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _initLocationAndCity() async {
+    final currentCity = ref.read(selectedCityProvider);
+    if (currentCity != null) {
+      // City already loaded during splash screen — do NOT fetch location again!
+      if (mounted) {
+        setState(() {
+          _isServiceAvailable = true;
+          _isInitializing = false;
+        });
+      }
+      return;
+    }
+
     setState(() => _isInitializing = true);
     final pos = await LocationService.getCurrentLocation(
       onError: (msg) {
@@ -863,6 +875,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _openRestaurantMenu(RestaurantModel restaurant) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+        pageBuilder: (context, animation, secondaryAnimation) => MenuScreen(
+          restaurantId: restaurant.id,
+          restaurantName: restaurant.name,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(0.0, 0.08),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          ));
+
+          return SlideTransition(
+            position: slideAnimation,
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildRestaurantSliverList(List<RestaurantModel> restaurants) {
     final paginated = restaurants.take(_visibleRestaurantCount).toList();
 
@@ -873,11 +916,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final dbImageUrl = restaurant.imageUrl;
 
           return InkWell(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => MenuScreen(restaurantId: restaurant.id, restaurantName: restaurant.name),
-              ));
-            },
+            onTap: () => _openRestaurantMenu(restaurant),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
