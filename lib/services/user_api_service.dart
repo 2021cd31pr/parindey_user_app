@@ -312,6 +312,97 @@ class UserApiService {
     }
   }
 
+  /// Customer Available Categories: GET /api/v1/customer/restaurants/{restaurantId}/categories
+  Future<List<CategoryModel>> getCustomerRestaurantCategories(String restaurantId) async {
+    final List<String> endpoints = [
+      '$baseUrl/api/v1/customer/restaurants/$restaurantId/categories',
+      '$baseUrl/api/v1/partner/restaurants/$restaurantId/categories',
+    ];
+
+    for (final endpoint in endpoints) {
+      try {
+        final url = Uri.parse(endpoint);
+        final headers = await _getHeaders();
+        final response = await http.get(url, headers: headers).timeout(timeoutDuration);
+        final responseData = _handleResponse(response);
+
+        if (responseData is List && responseData.isNotEmpty) {
+          return responseData.map((e) => CategoryModel.fromJson(e as Map<String, dynamic>)).toList();
+        }
+      } catch (e) {
+        if (kDebugMode) print('getCustomerRestaurantCategories error: $e');
+      }
+    }
+    return [];
+  }
+
+  /// Customer Paginated Dishes: GET /api/v1/customer/restaurants/{restaurantId}/dishes
+  Future<Map<String, dynamic>> getCustomerRestaurantDishesPaginated(
+    String restaurantId, {
+    int page = 0,
+    int size = 15,
+    String? categoryId,
+  }) async {
+    try {
+      String query = 'page=$page&size=$size';
+      if (categoryId != null && categoryId.isNotEmpty && categoryId.toLowerCase() != 'all') {
+        query += '&categoryId=$categoryId';
+      }
+
+      final List<String> endpoints = [
+        '$baseUrl/api/v1/customer/restaurants/$restaurantId/dishes?$query',
+        '$baseUrl/api/v1/partner/restaurants/$restaurantId/dishes',
+      ];
+
+      for (final endpoint in endpoints) {
+        try {
+          final url = Uri.parse(endpoint);
+          final headers = await _getHeaders();
+          final response = await http.get(url, headers: headers).timeout(timeoutDuration);
+          final responseData = _handleResponse(response);
+
+          int totalPages = 1;
+          if (response.headers['x-total-pages'] != null) {
+            totalPages = int.tryParse(response.headers['x-total-pages']!) ?? 1;
+          }
+
+          if (responseData is List) {
+            final dishes = responseData.map((e) => DishModel.fromJson(e as Map<String, dynamic>)).toList();
+            return {
+              'dishes': dishes,
+              'totalPages': totalPages,
+              'currentPage': page,
+            };
+          } else if (responseData is Map<String, dynamic> && responseData['content'] is List) {
+            final content = responseData['content'] as List;
+            final dishes = content.map((e) => DishModel.fromJson(e as Map<String, dynamic>)).toList();
+            final totalP = (responseData['totalPages'] as num?)?.toInt() ?? 1;
+            return {
+              'dishes': dishes,
+              'totalPages': totalP,
+              'currentPage': page,
+            };
+          }
+        } catch (e) {
+          if (kDebugMode) print('getCustomerRestaurantDishesPaginated error for $endpoint: $e');
+        }
+      }
+
+      return {
+        'dishes': <DishModel>[],
+        'totalPages': 1,
+        'currentPage': page,
+      };
+    } catch (e) {
+      if (kDebugMode) print('getCustomerRestaurantDishesPaginated error: $e');
+      return {
+        'dishes': <DishModel>[],
+        'totalPages': 1,
+        'currentPage': page,
+      };
+    }
+  }
+
   // 4. View Restaurant Menu (Categories, Dishes, Combos)
 
   /// Categories: GET /api/v1/partner/restaurants/{restaurantId}/categories
