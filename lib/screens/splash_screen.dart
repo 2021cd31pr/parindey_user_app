@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lottie/lottie.dart';
 
 import '../providers/app_providers.dart';
 import '../services/location_service.dart';
@@ -15,21 +15,34 @@ class SplashScreen extends ConsumerStatefulWidget {
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _scaleAnimation;
+class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProviderStateMixin {
+  late AnimationController _logoController;
+  late AnimationController _radarController;
+  late Animation<double> _logoScaleAnimation;
+  late Animation<double> _radarScaleAnimation;
+
   String _locationStatusText = 'Locating delivery address...';
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
+
+    _logoController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    _radarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
+    _logoScaleAnimation = Tween<double>(begin: 0.94, end: 1.06).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.easeInOut),
+    );
+
+    _radarScaleAnimation = Tween<double>(begin: 0.8, end: 1.4).animate(
+      CurvedAnimation(parent: _radarController, curve: Curves.easeOut),
     );
 
     _initAppAndLocation();
@@ -37,12 +50,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _logoController.dispose();
+    _radarController.dispose();
     super.dispose();
   }
 
   Future<void> _initAppAndLocation() async {
-    // 1. Read cached address for instant display
+    // 1. Read cached address for instant display (<10ms)
     final cachedAddr = await StorageService.getString('userAddress');
     if (cachedAddr != null && cachedAddr.isNotEmpty && mounted) {
       setState(() {
@@ -107,58 +121,78 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       body: SafeArea(
         child: Stack(
           children: [
-            // Center Brand Logo & Name Animation with Lottie
+            // Center Brand Logo & Pulsing Rings Animation
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    height: 120,
-                    width: 120,
-                    child: Lottie.network(
-                      'https://assets10.lottiefiles.com/packages/lf20_ub11m4.json',
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Image.asset(
-                        'assets/logo.png',
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.contain,
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Concentric Pulsing Radar Ring
+                      AnimatedBuilder(
+                        animation: _radarController,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _radarScaleAnimation.value,
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: primaryColor.withValues(
+                                    alpha: (1.0 - _radarController.value).clamp(0.0, 0.4),
+                                  ),
+                                  width: 2,
+                                ),
+                                color: primaryColor.withValues(
+                                  alpha: (1.0 - _radarController.value).clamp(0.0, 0.15),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      width: 110,
-                      height: 110,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 20,
-                            offset: Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/logo.png',
-                        width: 110,
-                        height: 110,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Container(
-                          padding: const EdgeInsets.all(20),
+
+                      // Animated Main Logo Circle
+                      ScaleTransition(
+                        scale: _logoScaleAnimation,
+                        child: Container(
+                          width: 130,
+                          height: 130,
                           decoration: const BoxDecoration(
-                            color: primaryColor,
                             shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 20,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
                           ),
-                          child: const Icon(Icons.restaurant_menu, size: 50, color: Colors.white),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/logo.png',
+                              width: 130,
+                              height: 130,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: const BoxDecoration(
+                                  color: primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.restaurant_menu, size: 54, color: Colors.white),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                   const Text(
                     'PARINDEY FOODS',
                     style: TextStyle(
@@ -184,31 +218,41 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
 
             // Bottom Swiggy-Style Live Location Radar Bar
             Positioned(
-              left: 24,
-              right: 24,
+              left: 20,
+              right: 20,
               bottom: 30,
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.orange[50],
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.orange[200]!),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))
+                  ],
                 ),
                 child: Row(
                   children: [
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        ScaleTransition(
-                          scale: _scaleAnimation,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: primaryColor.withValues(alpha: 0.3),
-                            ),
-                          ),
+                        AnimatedBuilder(
+                          animation: _radarController,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _radarScaleAnimation.value,
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: primaryColor.withValues(
+                                    alpha: (1.0 - _radarController.value).clamp(0.0, 0.35),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         const Icon(Icons.location_on, color: primaryColor, size: 20),
                       ],

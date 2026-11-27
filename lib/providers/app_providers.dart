@@ -11,6 +11,7 @@ import '../models/dish_model.dart';
 import '../models/combo_model.dart';
 import '../models/cart_item_model.dart';
 import '../models/order_model.dart';
+import '../models/saved_address_model.dart';
 import '../services/user_api_service.dart';
 import '../services/storage_service.dart';
 
@@ -383,6 +384,91 @@ class ActiveOrderNotifier extends StateNotifier<OrderResponse?> {
 }
 
 final activeOrderProvider = StateNotifierProvider<ActiveOrderNotifier, OrderResponse?>((ref) => ActiveOrderNotifier());
+
+// ---------------------------------------------------------------------------
+// SAVED ADDRESSES & SELECTION PROVIDERS
+// ---------------------------------------------------------------------------
+
+class SavedAddressesNotifier extends StateNotifier<List<SavedAddressModel>> {
+  SavedAddressesNotifier() : super([]) {
+    loadSavedAddresses();
+  }
+
+  Future<void> loadSavedAddresses() async {
+    final raw = await StorageService.getString('user_saved_addresses_v2');
+    if (raw != null && raw.isNotEmpty) {
+      state = SavedAddressModel.decodeList(raw);
+    } else {
+      // Migrate legacy address if present
+      final hNo = await StorageService.getString('userHouseNo') ?? '';
+      final stArea = await StorageService.getString('userStreetArea') ?? '';
+      final lm = await StorageService.getString('userLandmark') ?? '';
+      final cState = await StorageService.getString('userCityState') ?? '';
+      final pin = await StorageService.getString('userPincode') ?? '';
+      final phone = await StorageService.getString('userPhone') ?? '';
+      final name = await StorageService.getString('userName') ?? 'User';
+      final latStr = await StorageService.getString('userLat');
+      final lngStr = await StorageService.getString('userLng');
+
+      if (stArea.isNotEmpty) {
+        final legacyAddr = SavedAddressModel(
+          id: 'address-home-default',
+          label: 'HOME',
+          houseNo: hNo,
+          streetArea: stArea,
+          landmark: lm,
+          cityState: cState,
+          pincode: pin,
+          latitude: double.tryParse(latStr ?? ''),
+          longitude: double.tryParse(lngStr ?? ''),
+          receiverName: name,
+          receiverPhone: phone,
+        );
+        state = [legacyAddr];
+        await _saveToStorage();
+      }
+    }
+  }
+
+  Future<void> _saveToStorage() async {
+    final encoded = SavedAddressModel.encodeList(state);
+    await StorageService.setString('user_saved_addresses_v2', encoded);
+  }
+
+  Future<void> addAddress(SavedAddressModel address) async {
+    final existingIndex = state.indexWhere((a) => a.id == address.id);
+    if (existingIndex >= 0) {
+      final updated = List<SavedAddressModel>.from(state);
+      updated[existingIndex] = address;
+      state = updated;
+    } else {
+      state = [...state, address];
+    }
+    await _saveToStorage();
+  }
+
+  Future<void> removeAddress(String addressId) async {
+    state = state.where((a) => a.id != addressId).toList();
+    await _saveToStorage();
+  }
+}
+
+final savedAddressesProvider = StateNotifierProvider<SavedAddressesNotifier, List<SavedAddressModel>>(
+  (ref) => SavedAddressesNotifier(),
+);
+
+class SelectedAddressNotifier extends StateNotifier<SavedAddressModel?> {
+  SelectedAddressNotifier() : super(null);
+
+  void selectAddress(SavedAddressModel address) {
+    state = address;
+    StorageService.setString('selected_address_id', address.id);
+  }
+}
+
+final selectedAddressProvider = StateNotifierProvider<SelectedAddressNotifier, SavedAddressModel?>(
+  (ref) => SelectedAddressNotifier(),
+);
 
 final customerOrdersProvider = FutureProvider<List<OrderResponse>>((ref) async {
   final api = ref.watch(userApiServiceProvider);

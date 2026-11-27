@@ -10,6 +10,7 @@ import '../providers/app_providers.dart';
 import '../services/location_service.dart';
 import '../services/storage_service.dart';
 import '../services/user_api_service.dart';
+import '../widgets/swiggy_address_modal.dart';
 import '../widgets/swiggy_location_loading.dart';
 import 'home_screen.dart';
 
@@ -307,197 +308,21 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     return _isDetectingLocation ? 'Detecting current GPS location...' : 'Tap CHANGE to set delivery address';
   }
 
-  void _showAddressEditBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setBottomSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-                top: 20,
-                left: 20,
-                right: 20,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Edit Delivery Address',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            TextButton.icon(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                              ),
-                              icon: _isDetectingLocation
-                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019)))
-                                  : const Icon(Icons.my_location, size: 16, color: Color(0xFFfc8019)),
-                              label: Text(
-                                _isDetectingLocation ? 'LOCATING...' : 'AUTO-GPS',
-                                style: const TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 12),
-                              ),
-                              onPressed: _isDetectingLocation
-                                  ? null
-                                  : () async {
-                                setBottomSheetState(() => _isDetectingLocation = true);
-                                await _autoDetectGpsLocation(silent: false);
-                                setBottomSheetState(() => _isDetectingLocation = false);
-                              },
-                            ),
-                            IconButton(
-                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.close, size: 20),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _nameController,
-                            decoration: InputDecoration(
-                              labelText: 'Customer Name *',
-                              prefixIcon: const Icon(Icons.person_outline, size: 20, color: Color(0xFFfc8019)),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            decoration: InputDecoration(
-                              labelText: 'Phone *',
-                              prefixIcon: const Icon(Icons.phone_android, size: 20, color: Color(0xFFfc8019)),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _houseNoController,
-                      decoration: InputDecoration(
-                        labelText: 'Flat / House / Building No.',
-                        hintText: 'e.g. Flat 302, Tower B',
-                        prefixIcon: const Icon(Icons.home_outlined, size: 20, color: Color(0xFFfc8019)),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _streetAreaController,
-                      decoration: InputDecoration(
-                        labelText: 'Street / Area / Colony *',
-                        hintText: 'e.g. MG Road, Near City Mall',
-                        prefixIcon: const Icon(Icons.add_road, size: 20, color: Color(0xFFfc8019)),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            controller: _landmarkController,
-                            decoration: InputDecoration(
-                              labelText: 'Landmark (Optional)',
-                              hintText: 'e.g. Opposite Bank',
-                              prefixIcon: const Icon(Icons.explore_outlined, size: 20, color: Color(0xFFfc8019)),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 1,
-                          child: TextField(
-                            controller: _pincodeController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 6,
-                            decoration: InputDecoration(
-                              labelText: 'Pincode *',
-                              counterText: '',
-                              prefixIcon: const Icon(Icons.pin_drop_outlined, size: 20, color: Color(0xFFfc8019)),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _cityStateController,
-                      decoration: InputDecoration(
-                        labelText: 'City & State *',
-                        hintText: 'e.g. Indore, Madhya Pradesh',
-                        prefixIcon: const Icon(Icons.location_city, size: 20, color: Color(0xFFfc8019)),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFfc8019),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: () async {
-                          final fullAddr = _getFormattedFullAddress();
-                          await StorageService.setString('userHouseNo', _houseNoController.text.trim());
-                          await StorageService.setString('userStreetArea', _streetAreaController.text.trim());
-                          await StorageService.setString('userLandmark', _landmarkController.text.trim());
-                          await StorageService.setString('userCityState', _cityStateController.text.trim());
-                          await StorageService.setString('userPincode', _pincodeController.text.trim());
-                          await StorageService.setString('userAddress', fullAddr);
-
-                          if (mounted) setState(() {});
-                          if (context.mounted) Navigator.pop(context);
-                        },
-                        child: const Text('SAVE & DELIVER HERE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+  void _showAddressEditBottomSheet() async {
+    final selected = await SwiggyAddressModal.showSelectionSheet(context, ref);
+    if (selected != null) {
+      ref.read(selectedAddressProvider.notifier).selectAddress(selected);
+      _houseNoController.text = selected.houseNo;
+      _streetAreaController.text = selected.streetArea;
+      _landmarkController.text = selected.landmark;
+      _cityStateController.text = selected.cityState;
+      _pincodeController.text = selected.pincode;
+      _nameController.text = selected.receiverName;
+      _phoneController.text = selected.receiverPhone;
+      if (selected.latitude != null) _latitude = selected.latitude;
+      if (selected.longitude != null) _longitude = selected.longitude;
+      if (mounted) setState(() {});
+    }
   }
 
   double _calculateDistanceInKm(RestaurantModel? rest) {
@@ -605,24 +430,24 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       return;
     }
 
-    final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
-    final fullAddress = _getFormattedFullAddress();
+    final savedAddresses = ref.read(savedAddressesProvider);
+    final selectedAddress = ref.read(selectedAddressProvider);
+    final activeAddress = selectedAddress ?? (savedAddresses.isNotEmpty ? savedAddresses.first : null);
 
-    if (name.isEmpty || phone.isEmpty || _streetAreaController.text.trim().isEmpty) {
+    final name = activeAddress?.receiverName ?? (_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'User');
+    final phone = activeAddress?.receiverPhone ?? (_phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : '9876543210');
+    final fullAddress = activeAddress?.fullAddress ?? _getFormattedFullAddress();
+
+    if (fullAddress.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill out name, phone and delivery address')),
+        const SnackBar(content: Text('Please select or add a delivery address')),
       );
+      _showAddressEditBottomSheet();
       return;
     }
 
-    // Ensure GPS coordinates are loaded or fetched before submitting order
-    if (_latitude == null || _longitude == null) {
-      await _autoDetectGpsLocation(silent: false);
-    }
-
-    final double finalLat = _latitude ?? 22.7196;
-    final double finalLng = _longitude ?? 75.8577;
+    final double finalLat = activeAddress?.latitude ?? _latitude ?? 22.7196;
+    final double finalLng = activeAddress?.longitude ?? _longitude ?? 75.8577;
 
     setState(() => _isPlacingOrder = true);
 
@@ -762,60 +587,104 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
             ),
 
-            // Delivery Address Summary Card
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Swiggy-Exact Delivery Address Summary Card
+            Builder(
+              builder: (context) {
+                final savedAddresses = ref.watch(savedAddressesProvider);
+                final selectedAddress = ref.watch(selectedAddressProvider);
+                final activeAddress = selectedAddress ?? (savedAddresses.isNotEmpty ? savedAddresses.first : null);
+
+                final String displayLabel = activeAddress != null ? activeAddress.label.toUpperCase() : 'HOME';
+                final String displayFullAddr = activeAddress != null ? activeAddress.fullAddress : _getFormattedFullAddress();
+                final String displayContact = activeAddress != null
+                    ? '${activeAddress.receiverName} • +91 ${activeAddress.receiverPhone}'
+                    : '${_nameController.text.isEmpty ? 'User' : _nameController.text} • +91 ${_phoneController.text.isEmpty ? '...' : _phoneController.text}';
+
+                IconData labelIcon = Icons.home_filled;
+                Color badgeBg = const Color(0xFFFFF3E0);
+                Color iconColor = const Color(0xFFfc8019);
+
+                if (activeAddress != null) {
+                  if (activeAddress.label.toUpperCase() == 'WORK') {
+                    labelIcon = Icons.work_rounded;
+                    badgeBg = Colors.blue[50]!;
+                    iconColor = Colors.blue;
+                  } else if (activeAddress.label.toUpperCase() == 'OTHER') {
+                    labelIcon = Icons.location_on_rounded;
+                    badgeBg = Colors.purple[50]!;
+                    iconColor = Colors.purple;
+                  }
+                }
+
+                return Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.location_on, color: Color(0xFFfc8019), size: 22),
-                          const SizedBox(width: 8),
-                          const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
-                          if (_isDetectingLocation) ...[
-                            const SizedBox(width: 8),
-                            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019))),
-                          ],
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: badgeBg,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(labelIcon, color: iconColor, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text('Deliver to $displayLabel', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
+                                    if (_isDetectingLocation) ...[
+                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019))),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  displayFullAddr,
+                                  style: const TextStyle(color: Colors.black54, fontSize: 13, height: 1.3),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => _showAddressEditBottomSheet(),
+                            child: const Text('CHANGE', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
+                          ),
                         ],
                       ),
-                      TextButton(
-                        onPressed: () => _showAddressEditBottomSheet(),
-                        child: const Text('CHANGE', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: () => _showAddressEditBottomSheet(),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                displayContact,
+                                style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            const Icon(Icons.edit_outlined, size: 16, color: Color(0xFFfc8019)),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _getFormattedFullAddress(),
-                    style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4),
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  InkWell(
-                    onTap: () => _showAddressEditBottomSheet(),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${_nameController.text.isEmpty ? 'User' : _nameController.text} • +91 ${_phoneController.text.isEmpty ? '...' : _phoneController.text}',
-                            style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                        const Icon(Icons.edit_outlined, size: 16, color: Color(0xFFfc8019)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
 
             // Order Items

@@ -355,13 +355,6 @@ class ProfileScreen extends ConsumerWidget {
                       Text('+91 $displayPhone', style: const TextStyle(color: Colors.grey, fontSize: 13)),
                       if (displayEmail != null)
                         Text(displayEmail, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                      const SizedBox(height: 2),
-                      Text(
-                        displayAddress,
-                        style: const TextStyle(color: Colors.black54, fontSize: 12),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ],
                   ),
                 ),
@@ -372,7 +365,45 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Swiggy-style Saved Address Card in Profile
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3E0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.home_filled, color: Color(0xFFfc8019), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
+                      const SizedBox(height: 4),
+                      Text(
+                        displayAddress,
+                        style: const TextStyle(color: Colors.black54, fontSize: 13, height: 1.3),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _showEditProfileBottomSheet(context, ref, authState),
+                  child: const Text('EDIT', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // Menu Options
           _buildMenuItem(
@@ -395,19 +426,12 @@ class ProfileScreen extends ConsumerWidget {
           ),
           _buildMenuItem(
             context,
-            Icons.location_on_outlined,
-            'Addresses',
-            displayAddress,
-            onTap: () => _showEditProfileBottomSheet(context, ref, authState),
-          ),
-          _buildMenuItem(
-            context,
             Icons.payment,
             'Payments',
             'Saved cards & UPI',
             onTap: () => _showPaymentsBottomSheet(context),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildMenuItem(
             context,
             Icons.help_outline,
