@@ -66,10 +66,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  void setLoggedIn(AuthResponse auth, {String? name, String? email, String? address}) {
-    if (name != null && name.isNotEmpty) StorageService.setString('userName', name);
-    if (email != null && email.isNotEmpty) StorageService.setString('userEmail', email);
-    if (address != null && address.isNotEmpty) StorageService.setString('userAddress', address);
+  void setLoggedIn(AuthResponse auth, {String? name, String? email, String? address}) async {
+    if (auth.accessToken.isNotEmpty) await StorageService.setString('accessToken', auth.accessToken);
+    if (auth.userId.isNotEmpty) await StorageService.setString('userId', auth.userId);
+    if (auth.phone.isNotEmpty) await StorageService.setString('userPhone', auth.phone);
+    if (name != null && name.isNotEmpty) await StorageService.setString('userName', name);
+    if (email != null && email.isNotEmpty) await StorageService.setString('userEmail', email);
+    if (address != null && address.isNotEmpty) await StorageService.setString('userAddress', address);
 
     state = AuthState(
       isLoggedIn: true,

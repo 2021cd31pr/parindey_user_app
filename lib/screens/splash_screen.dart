@@ -84,8 +84,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       }
     } catch (_) {}
 
-    // 3. Smooth transition delay
-    await Future.delayed(const Duration(milliseconds: 1600));
+    // 3. Ensure Auth State is read from StorageService before routing decision
+    await ref.read(authProvider.notifier).checkLoginStatus();
+
+    await Future.delayed(const Duration(milliseconds: 1400));
 
     if (!mounted) return;
     final authState = ref.read(authProvider);
