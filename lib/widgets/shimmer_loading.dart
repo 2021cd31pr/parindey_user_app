@@ -150,11 +150,10 @@ class DishCardShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      margin: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,16 +164,32 @@ class DishCardShimmer extends StatelessWidget {
               children: const [
                 ShimmerWidget.rectangular(width: 16, height: 16),
                 SizedBox(height: 8),
-                ShimmerWidget.rectangular(width: 140, height: 16),
+                ShimmerWidget.rectangular(width: 150, height: 18),
+                SizedBox(height: 6),
+                ShimmerWidget.rectangular(width: 60, height: 16),
                 SizedBox(height: 8),
-                ShimmerWidget.rectangular(width: 60, height: 14),
-                SizedBox(height: 8),
-                ShimmerWidget.rectangular(width: 180, height: 12),
+                ShimmerWidget.rectangular(width: 200, height: 12),
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          const ShimmerWidget.rectangular(width: 110, height: 110),
+          const SizedBox(width: 12),
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
+            children: const [
+              ShimmerWidget.rectangular(width: 110, height: 110),
+              Positioned(
+                bottom: -12,
+                child: ShimmerWidget.rectangular(
+                  width: 80,
+                  height: 34,
+                  shapeBorder: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -201,6 +216,35 @@ class CategoryCarouselShimmer extends StatelessWidget {
                 SizedBox(height: 8),
                 ShimmerWidget.rectangular(width: 50, height: 12),
               ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class CategoryChipShimmer extends StatelessWidget {
+  const CategoryChipShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: 5,
+        itemBuilder: (context, index) {
+          return const Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: ShimmerWidget.rectangular(
+              width: 80,
+              height: 36,
+              shapeBorder: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(20)),
+              ),
             ),
           );
         },

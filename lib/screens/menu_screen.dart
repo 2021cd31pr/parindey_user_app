@@ -485,7 +485,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               color: Colors.white,
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: _isLoadingCategories
-                  ? const CategoryCarouselShimmer()
+                  ? const CategoryChipShimmer()
                   : ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
