@@ -28,21 +28,23 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
     super.initState();
     _currentOrder = widget.order ??
         OrderResponse(
-          id: '123456789',
-          restaurantId: 'd0e12345-6789-abcd-ef01-234567890abc',
-          restaurantName: 'Royal Biryani House',
-          restaurantAddress: 'Shop 12, Main Market, Indirapuram',
+          id: '',
+          restaurantId: '',
           status: 'PLACED',
-          totalAmount: 450.0,
-          customerName: 'Rahul Sharma',
-          customerPhone: '9876543210',
-          deliveryAddress: 'Flat 402, Sunshine Heights, Sector 18, Indirapuram',
-          prepTimeMinutes: 10,
+          totalAmount: 0.0,
+          customerName: '',
+          customerPhone: '',
+          deliveryAddress: '',
         );
 
     _updateRemainingTime();
     _startCountdownTimer();
     _startPolling();
+
+    // IMMEDIATELY FETCH LIVE ORDER FROM API ON PAGE OPEN
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshOrderDetails();
+    });
   }
 
   void _updateRemainingTime() {
@@ -95,7 +97,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
           _isRefreshing = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _isRefreshing = false);
       }
@@ -231,7 +233,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Track Order #$orderId', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text('Track Order #${orderId.isNotEmpty ? orderId : "..."}', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
