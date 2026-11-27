@@ -908,10 +908,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildRestaurantSliverList(List<RestaurantModel> restaurants) {
     final paginated = restaurants.take(_visibleRestaurantCount).toList();
+    final bool hasMore = paginated.length < restaurants.length;
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
+          if (index >= paginated.length) {
+            return const RestaurantCardShimmer();
+          }
+
           final restaurant = paginated[index];
           final dbImageUrl = restaurant.imageUrl;
 
@@ -1088,7 +1093,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           );
         },
-        childCount: paginated.length,
+        childCount: paginated.length + (hasMore ? 1 : 0),
       ),
     );
   }

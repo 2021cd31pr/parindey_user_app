@@ -826,14 +826,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               ),
             ),
 
-          // Bottom Pagination Loading Spinner Indicator
+          // Bottom Pagination Shimmer Cards
           if (_isLoadingMoreDishes)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFFfc8019), strokeWidth: 2.5),
-                ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, __) => const DishCardShimmer(),
+                childCount: 2,
               ),
             ),
 
