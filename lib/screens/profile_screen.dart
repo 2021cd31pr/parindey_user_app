@@ -5,6 +5,7 @@ import '../models/auth_model.dart';
 import '../providers/app_providers.dart';
 import '../services/location_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/swiggy_address_modal.dart';
 import 'favourites_screen.dart';
 import 'help_support_screen.dart';
 import 'order_history_screen.dart';
@@ -257,6 +258,138 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  void _showPrivacyPolicyBottomSheet(BuildContext context) async {
+    bool isAccepted = (await StorageService.getString('privacy_accepted')) == 'true';
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                top: 20,
+                left: 20,
+                right: 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Privacy Policy & Terms', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                      ],
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    const Text('🔒 Privacy & Data Usage Notice', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFFfc8019))),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Parindey Foods values your privacy. By using our food delivery platform, you confirm agreement to the following practices:',
+                      style: TextStyle(color: Colors.black87, fontSize: 13, height: 1.4),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('1. GPS Location Usage', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Text('Your GPS coordinates are strictly used to calculate exact restaurant distance, delivery fees, and live courier tracking.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    const SizedBox(height: 10),
+                    const Text('2. Account & Contact Protection', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Text('Your phone number is securely encrypted and only shared with assigned delivery partners for order coordination.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    const SizedBox(height: 10),
+                    const Text('3. Food & FSSAI Standards', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Text('All listed restaurant partners comply with statutory food safety guidelines.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Checkbox(
+                          activeColor: const Color(0xFFfc8019),
+                          value: isAccepted,
+                          onChanged: (val) {
+                            setState(() {
+                              isAccepted = val ?? false;
+                            });
+                          },
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'I have read and agree to the Privacy Policy & Terms of Service.',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isAccepted ? const Color(0xFF60b246) : Colors.grey[400],
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: isAccepted
+                            ? () async {
+                                await StorageService.setString('privacy_accepted', 'true');
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Privacy Policy confirmed & accepted!'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              }
+                            : null,
+                        child: const Text('I ACCEPT & CONFIRM', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showLogoutConfirmationDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Confirm Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text('Are you sure you want to log out of Parindey Foods?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await ref.read(authProvider.notifier).logout();
+                ref.read(cartProvider.notifier).clearCart();
+                ref.read(activeOrderProvider.notifier).clearActiveOrder();
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
+                }
+              },
+              child: const Text('LOGOUT', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showPaymentsBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -306,6 +439,52 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
+    // Unauthenticated New User Sign In First Guard
+    if (!authState.isLoggedIn) {
+      return Scaffold(
+        backgroundColor: Colors.grey[100],
+        appBar: AppBar(
+          title: const Text('My Account', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.account_circle_outlined, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 20),
+                const Text('Sign In to View Profile', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Please sign in or register a new account to manage your profile, saved addresses, and past orders.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFfc8019),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
+                    },
+                    child: const Text('SIGN IN / REGISTER', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final displayName = (authState.name != null && authState.name!.isNotEmpty)
         ? authState.name!
         : 'Parindey Customer';
@@ -316,9 +495,15 @@ class ProfileScreen extends ConsumerWidget {
         ? authState.email!
         : null;
 
-    String displayAddress = (authState.address != null && authState.address!.isNotEmpty)
-        ? authState.address!
-        : 'Tap EDIT to add your delivery address';
+    final selectedAddress = ref.watch(selectedAddressProvider);
+    final savedAddresses = ref.watch(savedAddressesProvider);
+    final activeAddr = selectedAddress ?? (savedAddresses.isNotEmpty ? savedAddresses.first : null);
+
+    String displayAddress = activeAddr != null
+        ? activeAddr.fullAddress
+        : ((authState.address != null && authState.address!.isNotEmpty)
+            ? authState.address!
+            : 'Tap EDIT to add your delivery address');
     displayAddress = displayAddress.replaceAll(RegExp(r'\s*\(Lat:.*, Lng:.*\)', caseSensitive: false), '');
 
     return Scaffold(
@@ -387,7 +572,7 @@ class ProfileScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
+                      Text('Delivery Address (${activeAddr?.label.toUpperCase() ?? "HOME"})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
                       const SizedBox(height: 4),
                       Text(
                         displayAddress,
@@ -397,8 +582,8 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => _showEditProfileBottomSheet(context, ref, authState),
-                  child: const Text('EDIT', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
+                  onPressed: () => SwiggyAddressModal.showSelectionSheet(context, ref),
+                  child: const Text('MANAGE', style: TextStyle(color: Color(0xFFfc8019), fontWeight: FontWeight.bold, fontSize: 13)),
                 ),
               ],
             ),
@@ -434,6 +619,13 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _buildMenuItem(
             context,
+            Icons.security_outlined,
+            'Privacy Policy & Terms',
+            'Terms of service & privacy confirmation',
+            onTap: () => _showPrivacyPolicyBottomSheet(context),
+          ),
+          _buildMenuItem(
+            context,
             Icons.help_outline,
             'Help & Support',
             'FAQ & customer care',
@@ -449,14 +641,7 @@ class ProfileScreen extends ConsumerWidget {
             child: ListTile(
               title: const Text('LOGOUT', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
               trailing: const Icon(Icons.power_settings_new, color: Colors.red),
-              onTap: () async {
-                await ref.read(authProvider.notifier).logout();
-                ref.read(cartProvider.notifier).clearCart();
-                ref.read(activeOrderProvider.notifier).clearActiveOrder();
-                if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
-                }
-              },
+              onTap: () => _showLogoutConfirmationDialog(context, ref),
             ),
           ),
         ],
