@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_providers.dart';
 import '../services/location_service.dart';
 import '../services/storage_service.dart';
-import 'home_screen.dart';
-import 'login_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -105,11 +103,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
 
     if (!mounted) return;
     final authState = ref.read(authProvider);
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => authState.isLoggedIn ? const HomeScreen() : const LoginScreen(),
-      ),
-    );
+
+    if (!authState.isLoggedIn) {
+      Navigator.pushReplacementNamed(context, '/auth');
+    } else if (authState.name == null || authState.name!.trim().isEmpty) {
+      Navigator.pushReplacementNamed(context, '/signup-profile');
+    } else {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
   }
 
   @override

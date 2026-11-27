@@ -27,6 +27,9 @@ class UserApiService {
   static const String baseUrl = 'https://parindey-production.up.railway.app';
   static const Duration timeoutDuration = Duration(seconds: 45);
 
+  static final Map<String, List<CategoryModel>> _restaurantCategoriesCache = {};
+  static final Map<String, Map<String, dynamic>> _restaurantDishesCache = {};
+
   Future<Map<String, String>> _getHeaders({bool requireAuth = false}) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
@@ -137,6 +140,53 @@ class UserApiService {
     } catch (e) {
       if (e is UserApiException) rethrow;
       throw UserApiException('Failed to verify OTP: $e');
+    }
+  }
+
+  /// Complete/Update Profile: PATCH /api/v1/auth/profile
+  Future<Map<String, dynamic>> updateProfile(String fullName) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/auth/profile');
+      final headers = await _getHeaders(requireAuth: true);
+      final body = jsonEncode({'fullName': fullName.trim()});
+
+      final response = await http.patch(url, headers: headers, body: body).timeout(timeoutDuration);
+      final responseData = _handleResponse(response);
+
+      await StorageService.setString('userName', fullName.trim());
+
+      if (responseData is Map<String, dynamic>) {
+        return responseData;
+      }
+      return {'fullName': fullName.trim()};
+    } on TimeoutException {
+      throw UserApiException('Profile update timed out. Please try again.');
+    } catch (e) {
+      if (e is UserApiException) rethrow;
+      throw UserApiException('Failed to update profile: $e');
+    }
+  }
+
+  /// Get Current User Profile: GET /api/v1/auth/profile
+  Future<Map<String, dynamic>?> getProfile() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/auth/profile');
+      final headers = await _getHeaders(requireAuth: true);
+
+      final response = await http.get(url, headers: headers).timeout(timeoutDuration);
+      final responseData = _handleResponse(response);
+
+      if (responseData is Map<String, dynamic>) {
+        final name = responseData['fullName']?.toString() ?? responseData['name']?.toString();
+        if (name != null && name.trim().isNotEmpty) {
+          await StorageService.setString('userName', name.trim());
+        }
+        return responseData;
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) print('getProfile error: $e');
+      return null;
     }
   }
 
@@ -335,6 +385,10 @@ class UserApiService {
 
   /// Customer Available Categories: GET /api/v1/customer/restaurants/{restaurantId}/categories
   Future<List<CategoryModel>> getCustomerRestaurantCategories(String restaurantId) async {
+    if (_restaurantCategoriesCache.containsKey(restaurantId) && _restaurantCategoriesCache[restaurantId]!.isNotEmpty) {
+      return _restaurantCategoriesCache[restaurantId]!;
+    }
+
     final List<String> endpoints = [
       '$baseUrl/api/v1/customer/restaurants/$restaurantId/categories',
       '$baseUrl/api/v1/partner/restaurants/$restaurantId/categories',
@@ -348,13 +402,15 @@ class UserApiService {
         final responseData = _handleResponse(response);
 
         if (responseData is List && responseData.isNotEmpty) {
-          return responseData.map((e) => CategoryModel.fromJson(e as Map<String, dynamic>)).toList();
+          final list = responseData.map((e) => CategoryModel.fromJson(e as Map<String, dynamic>)).toList();
+          _restaurantCategoriesCache[restaurantId] = list;
+          return list;
         }
       } catch (e) {
         if (kDebugMode) print('getCustomerRestaurantCategories error: $e');
       }
     }
-    return [];
+    return _restaurantCategoriesCache[restaurantId] ?? [];
   }
 
   /// Customer Paginated Dishes: GET /api/v1/customer/restaurants/{restaurantId}/dishes
@@ -364,6 +420,11 @@ class UserApiService {
     int size = 15,
     String? categoryId,
   }) async {
+    final cacheKey = '$restaurantId-${categoryId ?? "ALL"}-$page-$size';
+    if (_restaurantDishesCache.containsKey(cacheKey)) {
+      return _restaurantDishesCache[cacheKey]!;
+    }
+
     try {
       String query = 'page=$page&size=$size';
       if (categoryId != null && categoryId.isNotEmpty && categoryId.toLowerCase() != 'all') {
@@ -389,20 +450,28 @@ class UserApiService {
 
           if (responseData is List) {
             final dishes = responseData.map((e) => DishModel.fromJson(e as Map<String, dynamic>)).toList();
-            return {
+            final res = {
               'dishes': dishes,
               'totalPages': totalPages,
               'currentPage': page,
             };
+            if (dishes.isNotEmpty) {
+              _restaurantDishesCache[cacheKey] = res;
+            }
+            return res;
           } else if (responseData is Map<String, dynamic> && responseData['content'] is List) {
             final content = responseData['content'] as List;
             final dishes = content.map((e) => DishModel.fromJson(e as Map<String, dynamic>)).toList();
             final totalP = (responseData['totalPages'] as num?)?.toInt() ?? 1;
-            return {
+            final res = {
               'dishes': dishes,
               'totalPages': totalP,
               'currentPage': page,
             };
+            if (dishes.isNotEmpty) {
+              _restaurantDishesCache[cacheKey] = res;
+            }
+            return res;
           }
         } catch (e) {
           if (kDebugMode) print('getCustomerRestaurantDishesPaginated error for $endpoint: $e');

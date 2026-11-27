@@ -230,18 +230,18 @@ class CategoryChipShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: 44,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 5,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        itemCount: 6,
         itemBuilder: (context, index) {
           return const Padding(
             padding: EdgeInsets.only(right: 8),
             child: ShimmerWidget.rectangular(
-              width: 80,
-              height: 36,
+              width: 84,
+              height: 34,
               shapeBorder: RoundedRectangleBorder(
                 borderRadius: BorderRadius.all(Radius.circular(20)),
               ),

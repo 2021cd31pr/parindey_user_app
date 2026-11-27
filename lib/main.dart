@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/signup_profile_screen.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -27,6 +28,7 @@ class ParindeyUserApp extends ConsumerWidget {
       routes: {
         '/auth': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
+        '/signup-profile': (context) => const SignupProfileScreen(),
       },
     );
   }

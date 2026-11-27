@@ -214,14 +214,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       setState(() => _isLoading = false);
 
+      final bool isNew = authResponse.isNewUser == true ||
+          authResponse.fullName == null ||
+          authResponse.fullName!.trim().isEmpty;
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Welcome to Parindey Foods!'),
-            backgroundColor: Color(0xFF60b246),
-          ),
-        );
-        Navigator.pushReplacementNamed(context, '/home');
+        if (isNew) {
+          Navigator.pushReplacementNamed(context, '/signup-profile');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Welcome back to Parindey Foods!'),
+              backgroundColor: Color(0xFF60b246),
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);
