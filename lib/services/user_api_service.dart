@@ -85,6 +85,27 @@ class UserApiService {
     }
   }
 
+  /// Check if user exists by phone
+  /// GET /api/v1/auth/check-user?phone={phone}
+  Future<bool> checkUserExists(String phone) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/auth/check-user?phone=$phone');
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic>) {
+          return data['exists'] == true || data['registered'] == true;
+        } else if (data is bool) {
+          return data;
+        }
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
+
   /// Verify OTP & Receive JWT
   /// POST /api/v1/auth/verify-otp
   Future<AuthResponse> verifyOtp(String phone, String otp, {String requestedRole = 'ROLE_CUSTOMER'}) async {

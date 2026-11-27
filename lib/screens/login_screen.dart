@@ -53,36 +53,103 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  bool _isValidPhone(String phone) {
+    return phone.length == 10 && RegExp(r'^[6-9]\d{9}$').hasMatch(phone);
+  }
+
+  bool _isValidEmail(String email) {
+    if (email.trim().isEmpty) return true; // Email is optional
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email.trim());
+  }
+
+  bool _isValidName(String name) {
+    return name.trim().length >= 2;
+  }
+
+  bool _isValidOtp(String otp) {
+    return RegExp(r'^\d{4,6}$').hasMatch(otp.trim());
+  }
+
   Future<void> _sendOTP() async {
     final phone = _currentPhone;
-    if (phone.isEmpty || phone.length < 10) {
+
+    // 1. Phone number validation
+    if (!_isValidPhone(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
+        const SnackBar(
+          content: Text('Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }
 
+    // 2. Sign Up validations if on Sign Up tab (Tab 1)
     if (_selectedTabIndex == 1) {
-      if (_signUpNameController.text.trim().isEmpty) {
+      final name = _signUpNameController.text;
+      final email = _signUpEmailController.text;
+
+      if (!_isValidName(name)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter your full name to sign up')),
+          const SnackBar(
+            content: Text('Please enter your full name (at least 2 characters)'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      if (!_isValidEmail(email)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter a valid email address (e.g. name@example.com)'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
         return;
       }
     }
 
     setState(() => _isLoading = true);
+
     try {
       final api = ref.read(userApiServiceProvider);
+
+      // 3. On Login Tab (Tab 0), check if user exists in database
+      if (_selectedTabIndex == 0) {
+        final exists = await api.checkUserExists(phone);
+        if (!exists) {
+          // User does NOT exist -> Redirect automatically to SIGN UP (Tab 1)!
+          setState(() {
+            _selectedTabIndex = 1;
+            _signUpPhoneController.text = phone;
+            _isLoading = false;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Mobile number not registered! Please enter your name to Sign Up.'),
+                backgroundColor: Color(0xFFfc8019),
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      // 4. Send OTP
       await api.sendOtp(phone);
       setState(() {
         _otpSent = true;
         _isLoading = false;
       });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('OTP sent to +91 $phone'),
+            content: Text('OTP sent successfully to +91 $phone'),
             backgroundColor: const Color(0xFF60b246),
           ),
         );
@@ -100,14 +167,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _verifyOTP() async {
     final otp = _otpController.text.trim();
-    if (otp.isEmpty || otp.length < 4) {
+    if (!_isValidOtp(otp)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid OTP')),
+        const SnackBar(
+          content: Text('Please enter the valid OTP sent to your phone'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }
 
     setState(() => _isLoading = true);
+
     try {
       final phone = _currentPhone;
       final api = ref.read(userApiServiceProvider);
@@ -125,10 +196,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
 
       setState(() => _isLoading = false);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Welcome to Parindey Food Delivery!'),
+            content: Text('Welcome to Parindey Foods!'),
             backgroundColor: Color(0xFF60b246),
           ),
         );
