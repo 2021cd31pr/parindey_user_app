@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/order_model.dart';
@@ -41,7 +42,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
     _startCountdownTimer();
     _startPolling();
 
-    // IMMEDIATELY FETCH LIVE ORDER FROM API ON PAGE OPEN
+    // IMMEDIATELY FETCH LIVE UNCACHED ORDER DIRECTLY FROM API ON PAGE OPEN
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshOrderDetails();
     });
@@ -71,7 +72,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   }
 
   void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    // 5-second live polling directly from backend API
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _refreshOrderDetails();
     });
   }
@@ -147,6 +149,36 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
       default:
         return 0;
     }
+  }
+
+  Widget _buildLottieStatusBanner(String status) {
+    String lottieUrl = 'https://assets5.lottiefiles.com/packages/lf20_p8bfn5to.json'; // Kitchen Cooking
+
+    final upper = status.toUpperCase();
+    if (upper == 'OUT_FOR_DELIVERY' || upper == 'RIDER_ASSIGNED' || upper == 'REACHED_RESTAURANT') {
+      lottieUrl = 'https://assets3.lottiefiles.com/packages/lf20_ub11m4.json'; // Rider Scooter
+    } else if (upper == 'DELIVERED' || upper == 'ARRIVED_AT_CUSTOMER') {
+      lottieUrl = 'https://assets1.lottiefiles.com/packages/lf20_vnik43j3.json'; // Celebration Delivered
+    }
+
+    return Container(
+      height: 130,
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
+      ),
+      child: Lottie.network(
+        lottieUrl,
+        height: 120,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const Center(
+          child: Icon(Icons.delivery_dining, size: 60, color: Color(0xFFfc8019)),
+        ),
+      ),
+    );
   }
 
   Widget _buildCountdownWidget() {
@@ -293,6 +325,9 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                 ],
               ),
             ),
+
+            // Live Lottie Banner
+            _buildLottieStatusBanner(status),
 
             // Live Countdown Timer
             _buildCountdownWidget(),

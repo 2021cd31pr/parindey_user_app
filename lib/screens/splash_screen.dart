@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 
 import '../providers/app_providers.dart';
 import '../services/location_service.dart';
@@ -107,16 +107,31 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       body: SafeArea(
         child: Stack(
           children: [
-            // Center Brand Logo & Name Animation
+            // Center Brand Logo & Name Animation with Lottie
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  SizedBox(
+                    height: 120,
+                    width: 120,
+                    child: Lottie.network(
+                      'https://assets10.lottiefiles.com/packages/lf20_ub11m4.json',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Image.asset(
+                        'assets/logo.png',
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   ScaleTransition(
                     scale: _scaleAnimation,
                     child: Container(
-                      width: 140,
-                      height: 140,
+                      width: 110,
+                      height: 110,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         boxShadow: [
@@ -129,8 +144,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                       ),
                       child: Image.asset(
                         'assets/logo.png',
-                        width: 140,
-                        height: 140,
+                        width: 110,
+                        height: 110,
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => Container(
                           padding: const EdgeInsets.all(20),
@@ -138,7 +153,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                             color: primaryColor,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.restaurant_menu, size: 60, color: Colors.white),
+                          child: const Icon(Icons.restaurant_menu, size: 50, color: Colors.white),
                         ),
                       ),
                     ),
