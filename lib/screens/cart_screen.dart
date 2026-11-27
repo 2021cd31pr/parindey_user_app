@@ -10,6 +10,7 @@ import '../providers/app_providers.dart';
 import '../services/location_service.dart';
 import '../services/storage_service.dart';
 import '../services/user_api_service.dart';
+import '../widgets/swiggy_location_loading.dart';
 import 'home_screen.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
@@ -167,6 +168,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     if (_isDetectingLocation) return;
     setState(() => _isDetectingLocation = true);
 
+    if (!silent && mounted) {
+      SwiggyLocationPulseDialog.show(context, title: 'Locating your delivery address...');
+    }
+
     try {
       Position? position;
 
@@ -186,6 +191,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
       if (position == null) {
         if (!silent && mounted) {
+          Navigator.pop(context); // Dismiss dialog if open
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Could not obtain GPS location. Please check device GPS.')),
           );
@@ -267,6 +273,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         );
       }
     } finally {
+      if (!silent && mounted) {
+        Navigator.pop(context); // Dismiss pulse dialog when finished
+      }
       if (mounted) {
         setState(() => _isDetectingLocation = false);
       }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'providers/app_providers.dart';
+
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,8 +15,6 @@ class ParindeyUserApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-
     return MaterialApp(
       title: 'Parindey Foods',
       debugShowCheckedModeBanner: false,
@@ -24,7 +23,7 @@ class ParindeyUserApp extends ConsumerWidget {
         primaryColor: const Color(0xFFfc8019),
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: authState.isLoggedIn ? const HomeScreen() : const LoginScreen(),
+      home: const SplashScreen(),
       routes: {
         '/auth': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),

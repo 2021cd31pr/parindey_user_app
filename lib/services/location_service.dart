@@ -73,23 +73,23 @@ class LocationService {
         return null;
       }
 
+      // FAST LOCATION PIPELINE:
+      // 1. Immediately inspect last known cached location
       final Position? lastKnown = await Geolocator.getLastKnownPosition();
-      Position? pos;
+      if (lastKnown != null) {
+        await StorageService.setString('userLat', lastKnown.latitude.toString());
+        await StorageService.setString('userLng', lastKnown.longitude.toString());
+      }
 
+      // 2. Concurrently request high-accuracy position with 4-second timeout
+      Position? pos;
       try {
         pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.bestForNavigation,
-          timeLimit: const Duration(seconds: 12),
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 4),
         );
       } catch (_) {
-        try {
-          pos = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-            timeLimit: const Duration(seconds: 10),
-          );
-        } catch (_) {
-          pos = lastKnown;
-        }
+        pos = lastKnown;
       }
 
       if (pos == null) {
