@@ -280,11 +280,33 @@ class _AddressFormSheetState extends ConsumerState<_AddressFormSheet> {
     final authState = ref.read(authProvider);
 
     _selectedLabel = addr?.label ?? 'HOME';
-    _houseNoController = TextEditingController(text: addr?.houseNo ?? '');
-    _streetAreaController = TextEditingController(text: addr?.streetArea ?? '');
+    _houseNoController = TextEditingController(text: addr?.houseFlatNo ?? '');
+    
+    // Attempt to split fullAddress back into streetArea, cityState and pincode for editing
+    String stArea = '';
+    String cState = '';
+    String pin = '';
+    
+    if (addr != null && addr.fullAddress.isNotEmpty) {
+      final parts = addr.fullAddress.split(',');
+      if (parts.isNotEmpty) {
+        if (parts.length > 2) {
+           stArea = parts.sublist(0, parts.length - 2).join(',').trim();
+           cState = parts[parts.length - 2].trim();
+           pin = parts.last.trim();
+        } else if (parts.length == 2) {
+           stArea = parts[0].trim();
+           cState = parts[1].trim();
+        } else {
+           stArea = addr.fullAddress;
+        }
+      }
+    }
+    
+    _streetAreaController = TextEditingController(text: stArea);
     _landmarkController = TextEditingController(text: addr?.landmark ?? '');
-    _cityStateController = TextEditingController(text: addr?.cityState ?? '');
-    _pincodeController = TextEditingController(text: addr?.pincode ?? '');
+    _cityStateController = TextEditingController(text: cState);
+    _pincodeController = TextEditingController(text: pin);
     _nameController = TextEditingController(text: addr?.receiverName ?? authState.name ?? 'User');
     _phoneController = TextEditingController(text: addr?.receiverPhone ?? authState.phone ?? '');
     _lat = addr?.latitude;
@@ -348,22 +370,31 @@ class _AddressFormSheetState extends ConsumerState<_AddressFormSheet> {
       );
       return;
     }
+    
+    final parts = <String>[];
+    if (s.isNotEmpty) parts.add(s);
+    if (c.isNotEmpty) parts.add(c);
+    if (p.isNotEmpty) parts.add('- $p');
+    final fullAddr = parts.join(', ');
 
     final newAddr = SavedAddressModel(
       id: widget.addressToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       label: _selectedLabel,
-      houseNo: h,
-      streetArea: s,
+      houseFlatNo: h,
       landmark: l,
-      cityState: c,
-      pincode: p,
+      fullAddress: fullAddr,
       latitude: _lat,
       longitude: _lng,
       receiverName: name,
       receiverPhone: phone,
     );
 
-    ref.read(savedAddressesProvider.notifier).addAddress(newAddr);
+    if (widget.addressToEdit != null && widget.addressToEdit!.id.isNotEmpty) {
+      ref.read(savedAddressesProvider.notifier).updateAddress(widget.addressToEdit!.id, newAddr);
+    } else {
+      ref.read(savedAddressesProvider.notifier).addAddress(newAddr);
+    }
+    
     Navigator.pop(context, newAddr);
   }
 

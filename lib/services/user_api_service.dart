@@ -10,6 +10,7 @@ import '../models/category_model.dart';
 import '../models/dish_model.dart';
 import '../models/combo_model.dart';
 import '../models/order_model.dart';
+import '../models/saved_address_model.dart';
 
 import 'storage_service.dart';
 
@@ -696,6 +697,103 @@ class UserApiService {
     } catch (e) {
       if (e is UserApiException) rethrow;
       throw UserApiException('Failed to fetch order: $e');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 6. SAVED ADDRESSES MANAGEMENT
+  // ---------------------------------------------------------------------------
+
+  /// GET /api/v1/auth/addresses
+  Future<List<SavedAddressModel>> getSavedAddresses() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/auth/addresses');
+      final headers = await _getHeaders(requireAuth: true);
+
+      final response = await http.get(url, headers: headers).timeout(timeoutDuration);
+      final responseData = _handleResponse(response);
+
+      if (responseData is List) {
+        return responseData.map((e) => SavedAddressModel.fromJson(e as Map<String, dynamic>)).toList();
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) print('getSavedAddresses error: $e');
+      return [];
+    }
+  }
+
+  /// POST /api/v1/auth/addresses
+  Future<SavedAddressModel> addSavedAddress(SavedAddressModel address) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/auth/addresses');
+      final headers = await _getHeaders(requireAuth: true);
+      final body = jsonEncode(address.toJson());
+
+      final response = await http.post(url, headers: headers, body: body).timeout(timeoutDuration);
+      final responseData = _handleResponse(response);
+
+      if (responseData is Map<String, dynamic>) {
+         return SavedAddressModel.fromJson(responseData);
+      }
+      return address;
+    } catch (e) {
+      if (e is UserApiException) rethrow;
+      throw UserApiException('Failed to add address: $e');
+    }
+  }
+
+  /// PUT /api/v1/auth/addresses/{addressId}
+  Future<SavedAddressModel> updateSavedAddress(String addressId, SavedAddressModel address) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/auth/addresses/$addressId');
+      final headers = await _getHeaders(requireAuth: true);
+      final body = jsonEncode(address.toJson());
+
+      final response = await http.put(url, headers: headers, body: body).timeout(timeoutDuration);
+      final responseData = _handleResponse(response);
+
+      if (responseData is Map<String, dynamic>) {
+         return SavedAddressModel.fromJson(responseData);
+      }
+      return address;
+    } catch (e) {
+      if (e is UserApiException) rethrow;
+      throw UserApiException('Failed to update address: $e');
+    }
+  }
+
+  /// DELETE /api/v1/auth/addresses/{addressId}
+  Future<void> deleteSavedAddress(String addressId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/auth/addresses/$addressId');
+      final headers = await _getHeaders(requireAuth: true);
+
+      final response = await http.delete(url, headers: headers).timeout(timeoutDuration);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      _handleResponse(response);
+    } catch (e) {
+      if (e is UserApiException) rethrow;
+      throw UserApiException('Failed to delete address: $e');
+    }
+  }
+
+  /// PATCH /api/v1/auth/addresses/{addressId}/default
+  Future<void> setDefaultAddress(String addressId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/auth/addresses/$addressId/default');
+      final headers = await _getHeaders(requireAuth: true);
+
+      final response = await http.patch(url, headers: headers).timeout(timeoutDuration);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      _handleResponse(response);
+    } catch (e) {
+      if (e is UserApiException) rethrow;
+      throw UserApiException('Failed to set default address: $e');
     }
   }
 }

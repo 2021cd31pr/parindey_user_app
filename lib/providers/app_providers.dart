@@ -390,72 +390,68 @@ final activeOrderProvider = StateNotifierProvider<ActiveOrderNotifier, OrderResp
 // ---------------------------------------------------------------------------
 
 class SavedAddressesNotifier extends StateNotifier<List<SavedAddressModel>> {
-  SavedAddressesNotifier() : super([]) {
+  final UserApiService api;
+
+  SavedAddressesNotifier(this.api) : super([]) {
     loadSavedAddresses();
   }
 
   Future<void> loadSavedAddresses() async {
-    final raw = await StorageService.getString('user_saved_addresses_v2');
-    if (raw != null && raw.isNotEmpty) {
-      state = SavedAddressModel.decodeList(raw);
-    } else {
-      // Migrate legacy address if present
-      final hNo = await StorageService.getString('userHouseNo') ?? '';
-      final stArea = await StorageService.getString('userStreetArea') ?? '';
-      final lm = await StorageService.getString('userLandmark') ?? '';
-      final cState = await StorageService.getString('userCityState') ?? '';
-      final pin = await StorageService.getString('userPincode') ?? '';
-      final phone = await StorageService.getString('userPhone') ?? '';
-      final name = await StorageService.getString('userName') ?? 'User';
-      final latStr = await StorageService.getString('userLat');
-      final lngStr = await StorageService.getString('userLng');
-
-      if (stArea.isNotEmpty) {
-        final legacyAddr = SavedAddressModel(
-          id: 'address-home-default',
-          label: 'HOME',
-          houseNo: hNo,
-          streetArea: stArea,
-          landmark: lm,
-          cityState: cState,
-          pincode: pin,
-          latitude: double.tryParse(latStr ?? ''),
-          longitude: double.tryParse(lngStr ?? ''),
-          receiverName: name,
-          receiverPhone: phone,
-        );
-        state = [legacyAddr];
-        await _saveToStorage();
+    try {
+      final addresses = await api.getSavedAddresses();
+      if (addresses.isNotEmpty) {
+        state = addresses;
+      }
+    } catch (_) {
+      // Fallback to local storage if network fails
+      final raw = await StorageService.getString('user_saved_addresses_v2');
+      if (raw != null && raw.isNotEmpty) {
+        state = SavedAddressModel.decodeList(raw);
       }
     }
+  }
+
+  Future<void> addAddress(SavedAddressModel address) async {
+    try {
+      final newAddr = await api.addSavedAddress(address);
+      state = [newAddr, ...state];
+      _saveToStorage();
+    } catch (_) {}
+  }
+
+  Future<void> updateAddress(String addressId, SavedAddressModel address) async {
+    try {
+      final updatedAddr = await api.updateSavedAddress(addressId, address);
+      state = state.map((a) => a.id == addressId ? updatedAddr : a).toList();
+      _saveToStorage();
+    } catch (_) {}
+  }
+
+  Future<void> removeAddress(String addressId) async {
+    try {
+      await api.deleteSavedAddress(addressId);
+      state = state.where((a) => a.id != addressId).toList();
+      _saveToStorage();
+    } catch (_) {}
+  }
+
+  Future<void> setAsDefault(String addressId) async {
+    try {
+      await api.setDefaultAddress(addressId);
+      await loadSavedAddresses(); // Refresh list to get reordered list with new default
+    } catch (_) {}
   }
 
   Future<void> _saveToStorage() async {
     final encoded = SavedAddressModel.encodeList(state);
     await StorageService.setString('user_saved_addresses_v2', encoded);
   }
-
-  Future<void> addAddress(SavedAddressModel address) async {
-    final existingIndex = state.indexWhere((a) => a.id == address.id);
-    if (existingIndex >= 0) {
-      final updated = List<SavedAddressModel>.from(state);
-      updated[existingIndex] = address;
-      state = updated;
-    } else {
-      state = [...state, address];
-    }
-    await _saveToStorage();
-  }
-
-  Future<void> removeAddress(String addressId) async {
-    state = state.where((a) => a.id != addressId).toList();
-    await _saveToStorage();
-  }
 }
 
-final savedAddressesProvider = StateNotifierProvider<SavedAddressesNotifier, List<SavedAddressModel>>(
-  (ref) => SavedAddressesNotifier(),
-);
+final savedAddressesProvider = StateNotifierProvider<SavedAddressesNotifier, List<SavedAddressModel>>((ref) {
+  final api = ref.watch(userApiServiceProvider);
+  return SavedAddressesNotifier(api);
+});
 
 class SelectedAddressNotifier extends StateNotifier<SavedAddressModel?> {
   SelectedAddressNotifier() : super(null);

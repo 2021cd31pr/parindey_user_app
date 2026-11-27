@@ -312,11 +312,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final selected = await SwiggyAddressModal.showSelectionSheet(context, ref);
     if (selected != null) {
       ref.read(selectedAddressProvider.notifier).selectAddress(selected);
-      _houseNoController.text = selected.houseNo;
-      _streetAreaController.text = selected.streetArea;
-      _landmarkController.text = selected.landmark;
-      _cityStateController.text = selected.cityState;
-      _pincodeController.text = selected.pincode;
       _nameController.text = selected.receiverName;
       _phoneController.text = selected.receiverPhone;
       if (selected.latitude != null) _latitude = selected.latitude;
