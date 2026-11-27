@@ -115,27 +115,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final api = ref.read(userApiServiceProvider);
 
-      // 3. On Login Tab (Tab 0), check if user exists in database
-      if (_selectedTabIndex == 0) {
-        final exists = await api.checkUserExists(phone);
-        if (!exists) {
-          // User does NOT exist -> Redirect automatically to SIGN UP (Tab 1)!
-          setState(() {
-            _selectedTabIndex = 1;
-            _signUpPhoneController.text = phone;
-            _isLoading = false;
-          });
+      // 3. Check user existence in database for smart direction
+      final exists = await api.checkUserExists(phone);
 
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Mobile number not registered! Please enter your name to Sign Up.'),
-                backgroundColor: Color(0xFFfc8019),
-                duration: Duration(seconds: 4),
-              ),
-            );
-          }
-          return;
+      if (_selectedTabIndex == 0 && !exists) {
+        // User does NOT exist on Login -> Redirect automatically to SIGN UP (Tab 1)!
+        setState(() {
+          _selectedTabIndex = 1;
+          _signUpPhoneController.text = phone;
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mobile number not registered! Please enter your name to Sign Up.'),
+              backgroundColor: Color(0xFFfc8019),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (_selectedTabIndex == 1 && exists) {
+        // User ALREADY exists on Sign Up -> Redirect automatically to LOGIN (Tab 0) & continue sending OTP!
+        setState(() {
+          _selectedTabIndex = 0;
+          _loginPhoneController.text = phone;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mobile number is already registered! Redirected to Sign In.'),
+              backgroundColor: Color(0xFFfc8019),
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
       }
 
