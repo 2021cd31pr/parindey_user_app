@@ -9,6 +9,7 @@ import '../providers/app_providers.dart';
 import '../services/storage_service.dart';
 import '../widgets/floating_active_order_card.dart';
 import '../widgets/dish_details_bottom_sheet.dart';
+import '../widgets/shimmer_loading.dart';
 import 'cart_screen.dart';
 
 class MenuScreen extends ConsumerStatefulWidget {
@@ -29,11 +30,29 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   String selectedCategory = 'All';
   double? _userLat;
   double? _userLng;
+  final ScrollController _scrollController = ScrollController();
+  int _visibleDishCount = 10;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _loadUserCoords();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 250) {
+      setState(() {
+        _visibleDishCount += 10;
+      });
+    }
   }
 
   Future<void> _loadUserCoords() async {
@@ -361,43 +380,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final cartState = ref.watch(cartProvider);
     final activeOrder = ref.watch(activeOrderProvider);
 
-    // Full-Screen Loading Spinner until restaurant details are loaded
-    if (restaurantDetailsAsync.isLoading || dishesAsync.isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: Color(0xFFfc8019)),
-              const SizedBox(height: 16),
-              Text(
-                'Loading ${widget.restaurantName}...',
-                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
-          // Restaurant Header with Immersive Top Banner & Floating Controls (0 White Bar)
+          // Restaurant Header (Loads Header First via Shimmer while loading)
           SliverToBoxAdapter(
             child: restaurantDetailsAsync.when(
               data: (rest) => _buildBlurredHeader(rest),
-              loading: () => _buildBlurredHeader(null),
+              loading: () => const RestaurantHeaderShimmer(),
               error: (_, __) => _buildBlurredHeader(null),
             ),
           ),
@@ -522,7 +514,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
             error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
 
-          // Dishes Grouped Category-Wise
+          // Dishes Grouped Category-Wise (Loads with DishCardShimmer placeholders and scroll pagination)
           dishesAsync.when(
             data: (dishes) {
               if (dishes.isEmpty) {
@@ -576,6 +568,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                   (context, index) {
                     final catName = filteredGroups.keys.elementAt(index);
                     final groupDishes = filteredGroups[catName]!;
+                    final paginatedDishes = groupDishes.take(_visibleDishCount).toList();
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -601,8 +594,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         ),
                         const Divider(height: 1, thickness: 1),
 
-                        // Dishes under this category
-                        ...groupDishes.map((dish) {
+                        // Dishes under this category (Paginated)
+                        ...paginatedDishes.map((dish) {
                           final cartItem = cartState.items[dish.id];
                           final itemQty = cartItem?.quantity ?? 0;
                           final dbImageUrl = dish.imageUrl;
@@ -807,10 +800,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 ),
               );
             },
-            loading: () => const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(32.0),
-                child: Center(child: CircularProgressIndicator(color: Color(0xFFfc8019))),
+            loading: () => SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, __) => const DishCardShimmer(),
+                childCount: 4,
               ),
             ),
             error: (err, stack) => SliverToBoxAdapter(
