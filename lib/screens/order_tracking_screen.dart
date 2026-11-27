@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lottie/lottie.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/order_model.dart';
@@ -21,6 +20,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   Timer? _pollingTimer;
   Timer? _countdownTimer;
   late OrderResponse _currentOrder;
+  bool _isLoadingOrder = true;
   bool _isRefreshing = false;
   int _remainingSeconds = 0;
 
@@ -37,6 +37,10 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
           customerPhone: '',
           deliveryAddress: '',
         );
+
+    if (widget.order != null && widget.order!.id.isNotEmpty) {
+      _isLoadingOrder = false;
+    }
 
     _updateRemainingTime();
     _startCountdownTimer();
@@ -86,22 +90,34 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   }
 
   Future<void> _refreshOrderDetails() async {
-    if (_currentOrder.id.isEmpty) return;
+    final String targetId = (widget.order?.id.isNotEmpty == true)
+        ? widget.order!.id
+        : (_currentOrder.id.isNotEmpty ? _currentOrder.id : '');
+
+    if (targetId.isEmpty) {
+      if (mounted) setState(() => _isLoadingOrder = false);
+      return;
+    }
+
     setState(() => _isRefreshing = true);
 
     try {
       final api = ref.read(userApiServiceProvider);
-      final updated = await api.getOrderById(_currentOrder.id);
+      final updated = await api.getOrderById(targetId);
       if (mounted) {
         setState(() {
           _currentOrder = updated;
           _updateRemainingTime();
           _isRefreshing = false;
+          _isLoadingOrder = false; // Loaded live details from API
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isRefreshing = false);
+        setState(() {
+          _isRefreshing = false;
+          _isLoadingOrder = false;
+        });
       }
     }
   }
@@ -149,36 +165,6 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
       default:
         return 0;
     }
-  }
-
-  Widget _buildLottieStatusBanner(String status) {
-    String lottieUrl = 'https://assets5.lottiefiles.com/packages/lf20_p8bfn5to.json'; // Kitchen Cooking
-
-    final upper = status.toUpperCase();
-    if (upper == 'OUT_FOR_DELIVERY' || upper == 'RIDER_ASSIGNED' || upper == 'REACHED_RESTAURANT') {
-      lottieUrl = 'https://assets3.lottiefiles.com/packages/lf20_ub11m4.json'; // Rider Scooter
-    } else if (upper == 'DELIVERED' || upper == 'ARRIVED_AT_CUSTOMER') {
-      lottieUrl = 'https://assets1.lottiefiles.com/packages/lf20_vnik43j3.json'; // Celebration Delivered
-    }
-
-    return Container(
-      height: 130,
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
-      ),
-      child: Lottie.network(
-        lottieUrl,
-        height: 120,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Center(
-          child: Icon(Icons.delivery_dining, size: 60, color: Color(0xFFfc8019)),
-        ),
-      ),
-    );
   }
 
   Widget _buildCountdownWidget() {
@@ -249,6 +235,40 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingOrder && _currentOrder.id.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: const Text('Track Order', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: Colors.black),
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                (route) => false,
+              );
+            },
+          ),
+        ),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Color(0xFFfc8019)),
+              SizedBox(height: 16),
+              Text(
+                'Fetching live order details...',
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final orderId = _currentOrder.id.length > 8 ? _currentOrder.id.substring(0, 8) : _currentOrder.id;
     final status = _currentOrder.status;
     final total = _currentOrder.totalAmount;
@@ -325,9 +345,6 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                 ],
               ),
             ),
-
-            // Live Lottie Banner
-            _buildLottieStatusBanner(status),
 
             // Live Countdown Timer
             _buildCountdownWidget(),
