@@ -9,8 +9,13 @@ import 'home_screen.dart';
 
 class OrderTrackingScreen extends ConsumerStatefulWidget {
   final OrderResponse? order;
+  final String? orderId;
 
-  const OrderTrackingScreen({super.key, this.order});
+  const OrderTrackingScreen({
+    super.key,
+    this.order,
+    this.orderId,
+  });
 
   @override
   ConsumerState<OrderTrackingScreen> createState() => _OrderTrackingScreenState();
@@ -19,55 +24,41 @@ class OrderTrackingScreen extends ConsumerStatefulWidget {
 class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   Timer? _pollingTimer;
   Timer? _countdownTimer;
-  late OrderResponse _currentOrder;
+  OrderResponse? _currentOrder;
   bool _isLoadingOrder = true;
   bool _isRefreshing = false;
+  String? _apiErrorMessage;
   int _remainingSeconds = 0;
 
   @override
   void initState() {
     super.initState();
-    _currentOrder = widget.order ??
-        OrderResponse(
-          id: '',
-          restaurantId: '',
-          status: 'PLACED',
-          totalAmount: 0.0,
-          customerName: '',
-          customerPhone: '',
-          deliveryAddress: '',
-        );
-
-    if (widget.order != null && widget.order!.id.isNotEmpty) {
-      _isLoadingOrder = false;
-    }
-
-    _updateRemainingTime();
     _startCountdownTimer();
     _startPolling();
 
-    // IMMEDIATELY FETCH LIVE UNCACHED ORDER DIRECTLY FROM API ON PAGE OPEN
+    // STRICTLY FETCH LIVE UNCACHED ORDER DIRECTLY FROM API ON PAGE OPEN
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshOrderDetails();
+      _fetchLiveOrderFromApi();
     });
   }
 
   void _updateRemainingTime() {
-    if (_currentOrder.prepEndsAt != null) {
-      final diff = _currentOrder.prepEndsAt!.difference(DateTime.now()).inSeconds;
+    if (_currentOrder == null) return;
+    if (_currentOrder!.prepEndsAt != null) {
+      final diff = _currentOrder!.prepEndsAt!.difference(DateTime.now()).inSeconds;
       _remainingSeconds = diff > 0 ? diff : 0;
     } else {
-      _remainingSeconds = _currentOrder.remainingPrepSeconds > 0
-          ? _currentOrder.remainingPrepSeconds
-          : (_currentOrder.prepTimeMinutes * 60);
+      _remainingSeconds = _currentOrder!.remainingPrepSeconds > 0
+          ? _currentOrder!.remainingPrepSeconds
+          : (_currentOrder!.prepTimeMinutes * 60);
     }
   }
 
   void _startCountdownTimer() {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
+      if (!mounted || _currentOrder == null) return;
       if (_remainingSeconds > 0 &&
-          (_currentOrder.status == 'PLACED' || _currentOrder.status == 'ACCEPTED' || _currentOrder.status == 'PREPARING')) {
+          (_currentOrder!.status == 'PLACED' || _currentOrder!.status == 'ACCEPTED' || _currentOrder!.status == 'PREPARING')) {
         setState(() {
           _remainingSeconds--;
         });
@@ -78,7 +69,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   void _startPolling() {
     // 5-second live polling directly from backend API
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _refreshOrderDetails();
+      _fetchLiveOrderFromApi(silent: true);
     });
   }
 
@@ -89,34 +80,49 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
     super.dispose();
   }
 
-  Future<void> _refreshOrderDetails() async {
-    final String targetId = (widget.order?.id.isNotEmpty == true)
-        ? widget.order!.id
-        : (_currentOrder.id.isNotEmpty ? _currentOrder.id : '');
+  Future<void> _fetchLiveOrderFromApi({bool silent = false}) async {
+    final String targetId = (widget.orderId != null && widget.orderId!.isNotEmpty)
+        ? widget.orderId!
+        : (widget.order?.id ?? (_currentOrder?.id ?? ''));
 
     if (targetId.isEmpty) {
-      if (mounted) setState(() => _isLoadingOrder = false);
+      if (mounted) {
+        setState(() {
+          _isLoadingOrder = false;
+          _apiErrorMessage = 'No Order ID provided for tracking.';
+        });
+      }
       return;
     }
 
-    setState(() => _isRefreshing = true);
+    if (!silent) {
+      setState(() {
+        _isRefreshing = true;
+        _apiErrorMessage = null;
+      });
+    }
 
     try {
       final api = ref.read(userApiServiceProvider);
-      final updated = await api.getOrderById(targetId);
+      final liveOrder = await api.getOrderById(targetId);
+
       if (mounted) {
         setState(() {
-          _currentOrder = updated;
+          _currentOrder = liveOrder;
           _updateRemainingTime();
+          _isLoadingOrder = false;
           _isRefreshing = false;
-          _isLoadingOrder = false; // Loaded live details from API
+          _apiErrorMessage = null;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isRefreshing = false;
-          _isLoadingOrder = false;
+          if (_currentOrder == null) {
+            _isLoadingOrder = false;
+            _apiErrorMessage = e.toString().replaceAll('UserApiException: ', '');
+          }
         });
       }
     }
@@ -168,15 +174,18 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   }
 
   Widget _buildCountdownWidget() {
-    if (_currentOrder.status == 'OUT_FOR_DELIVERY' || _currentOrder.status == 'DELIVERED' || _currentOrder.status == 'ARRIVED_AT_CUSTOMER') {
+    if (_currentOrder == null ||
+        _currentOrder!.status == 'OUT_FOR_DELIVERY' ||
+        _currentOrder!.status == 'DELIVERED' ||
+        _currentOrder!.status == 'ARRIVED_AT_CUSTOMER') {
       return const SizedBox.shrink();
     }
 
     final mins = (_remainingSeconds / 60).floor().toString().padLeft(2, '0');
     final secs = (_remainingSeconds % 60).toString().padLeft(2, '0');
     final timeStr = '$mins:$secs';
-    final progress = _currentOrder.prepTimeMinutes > 0
-        ? 1.0 - (_remainingSeconds / (_currentOrder.prepTimeMinutes * 60))
+    final progress = _currentOrder!.prepTimeMinutes > 0
+        ? 1.0 - (_remainingSeconds / (_currentOrder!.prepTimeMinutes * 60))
         : 0.0;
 
     return Container(
@@ -205,7 +214,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
           ),
-          if (_currentOrder.prepExtendedCount > 0) ...[
+          if (_currentOrder!.prepExtendedCount > 0) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -220,7 +229,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '⏳ Restaurant added +${_currentOrder.prepExtendedCount * 5} mins extra time for thorough preparation.',
+                      '⏳ Restaurant added +${_currentOrder!.prepExtendedCount * 5} mins extra time for thorough preparation.',
                       style: TextStyle(color: Colors.red[800], fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -235,7 +244,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingOrder && _currentOrder.id.isEmpty) {
+    // 1. Full-Screen Loading State Until Live API Response Returns
+    if (_isLoadingOrder || _currentOrder == null) {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
@@ -253,39 +263,68 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
             },
           ),
         ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Color(0xFFfc8019)),
-              SizedBox(height: 16),
-              Text(
-                'Fetching live order details...',
-                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ],
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: _apiErrorMessage != null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Unable to load live order from API:\n$_apiErrorMessage',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.black87, fontSize: 14),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFfc8019),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.refresh, color: Colors.white),
+                        label: const Text('RETRY API FETCH', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        onPressed: () => _fetchLiveOrderFromApi(),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      CircularProgressIndicator(color: Color(0xFFfc8019)),
+                      SizedBox(height: 16),
+                      Text(
+                        'Fetching live order directly from API...',
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ],
+                  ),
           ),
         ),
       );
     }
 
-    final orderId = _currentOrder.id.length > 8 ? _currentOrder.id.substring(0, 8) : _currentOrder.id;
-    final status = _currentOrder.status;
-    final total = _currentOrder.totalAmount;
+    // 2. Render Live API Order Details
+    final order = _currentOrder!;
+    final orderId = order.id.length > 8 ? order.id.substring(0, 8) : order.id;
+    final status = order.status;
+    final total = order.totalAmount;
     final currentStep = _getStepIndex(status);
 
-    final rName = _currentOrder.restaurantName ?? 'Restaurant';
-    final rAddress = _currentOrder.restaurantAddress ?? 'Main Market, City Center';
-    final dAddress = _currentOrder.deliveryAddress;
+    final rName = order.restaurantName ?? 'Restaurant';
+    final rAddress = order.restaurantAddress ?? 'Main Market, City Center';
+    final dAddress = order.deliveryAddress;
 
-    final riderName = _currentOrder.deliveryPartnerName ?? 'Delivery Partner';
-    final riderPhone = _currentOrder.deliveryPartnerPhone ?? '';
+    final riderName = order.deliveryPartnerName ?? 'Delivery Partner';
+    final riderPhone = order.deliveryPartnerPhone ?? '';
     final hasRider = (currentStep >= 3) && riderPhone.isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Track Order #${orderId.isNotEmpty ? orderId : "..."}', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text('Track Order #$orderId', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -304,7 +343,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
             icon: _isRefreshing
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFfc8019)))
                 : const Icon(Icons.refresh, color: Color(0xFFfc8019)),
-            onPressed: _isRefreshing ? null : _refreshOrderDetails,
+            onPressed: _isRefreshing ? null : () => _fetchLiveOrderFromApi(),
           ),
         ],
       ),
